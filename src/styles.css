@@ -23,11 +23,14 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
+  --color-saffron: var(--saffron);
+  --color-saffron-deep: var(--saffron-deep);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-maroon: var(--maroon);
+  --color-cream: var(--cream);
+  --color-cream-deep: var(--cream-deep);
+  --color-deep-maroon: var(--deep-maroon);
   --color-ring: var(--ring);
 
   --color-saffron: var(--saffron);
