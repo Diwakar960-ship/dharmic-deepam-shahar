@@ -1,17 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import heroImg from "@/assets/hero-divine.jpg";
-import artistImg from "@/assets/artist-portrait.jpg";
-import g1 from "@/assets/gallery-1.jpg";
-import g2 from "@/assets/gallery-2.jpg";
-import g3 from "@/assets/gallery-3.jpg";
-import g4 from "@/assets/gallery-4.jpg";
-import g5 from "@/assets/gallery-5.jpg";
-import g6 from "@/assets/gallery-6.jpg";
 import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
-import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles } from "lucide-react";
+import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
