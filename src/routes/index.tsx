@@ -189,9 +189,7 @@ function About() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-br from-saffron/20 to-gold/30 rounded-3xl blur-2xl" />
-            <div className="relative divine-border rounded-3xl overflow-hidden">
-              <img src={artistImg} alt="धीरज पांडेय" className="w-full h-[500px] object-cover" loading="lazy" width={1024} height={1024} />
-            </div>
+            <PhotoUpload />
             <div className="absolute -bottom-6 -right-6 bg-cream divine-border rounded-2xl px-5 py-3 shadow-lg">
               <div className="text-xs text-maroon">शाहपुर घराना</div>
               <div className="font-display text-saffron-deep">परंपरा से जुड़ाव</div>
