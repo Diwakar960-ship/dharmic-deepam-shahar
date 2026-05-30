@@ -1,17 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import heroImg from "@/assets/hero-divine.jpg";
-import artistImg from "@/assets/artist-portrait.jpg";
-import g1 from "@/assets/gallery-1.jpg";
-import g2 from "@/assets/gallery-2.jpg";
-import g3 from "@/assets/gallery-3.jpg";
-import g4 from "@/assets/gallery-4.jpg";
-import g5 from "@/assets/gallery-5.jpg";
-import g6 from "@/assets/gallery-6.jpg";
 import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
-import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles } from "lucide-react";
+import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,8 +18,6 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const galleryImages = [g1, g2, g3, g4, g5, g6];
-
 const SERVICES = [
   { icon: "🪔", title: "भजन संध्या", desc: "मधुर भजनों की दिव्य संध्या" },
   { icon: "📖", title: "सुंदरकांड पाठ", desc: "श्री रामचरितमानस का पावन पाठ" },
@@ -36,7 +27,13 @@ const SERVICES = [
   { icon: "🙏", title: "नवरात्रि जागरण", desc: "9 रातों का दिव्य आयोजन" },
   { icon: "🎶", title: "कीर्तन एवं चालीसा पाठ", desc: "हनुमान, दुर्गा, शिव चालीसा" },
   { icon: "🎊", title: "जन्माष्टमी, हनुमान जयंती", desc: "विशेष पर्व कार्यक्रम" },
-  { icon: "🕉️", title: "सत्यनारायण कथा संगीत", desc: "और सभी हिंदू धार्मिक आयोजन" },
+  {
+    icon: "🕯️",
+    title: "निर्गुण संगीत",
+    desc: "बिहार की पवित्र परंपरा — निर्गुण संगीत",
+    body: "निर्गुण संगीत बिहार की एक अत्यंत पवित्र और भावपूर्ण संगीत परंपरा है जो किसी प्रियजन के निधन के पश्चात् आयोजित शोक सभा (उठावनी / तेरहवीं) में प्रस्तुत की जाती है। इसमें कबीर, रैदास और संत परंपरा के निर्गुण भजन गाए जाते हैं जो आत्मा की शांति और मोक्ष के लिए समर्पित होते हैं। यह कार्यक्रम शोक में डूबे परिवार को आध्यात्मिक सांत्वना और भक्ति का सहारा देता है। धीरज पांडेय जी इस पवित्र सेवा को पूर्ण श्रद्धा और संवेदनशीलता के साथ प्रस्तुत करते हैं।",
+    solemn: true,
+  },
 ];
 
 interface Review {
@@ -192,9 +189,7 @@ function About() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-br from-saffron/20 to-gold/30 rounded-3xl blur-2xl" />
-            <div className="relative divine-border rounded-3xl overflow-hidden">
-              <img src={artistImg} alt="धीरज पांडेय" className="w-full h-[500px] object-cover" loading="lazy" width={1024} height={1024} />
-            </div>
+            <PhotoUpload />
             <div className="absolute -bottom-6 -right-6 bg-cream divine-border rounded-2xl px-5 py-3 shadow-lg">
               <div className="text-xs text-maroon">शाहपुर घराना</div>
               <div className="font-display text-saffron-deep">परंपरा से जुड़ाव</div>
@@ -242,12 +237,21 @@ function Services() {
           {SERVICES.map((s, i) => (
             <div
               key={s.title}
-              className="divine-border bg-cream rounded-2xl p-6 group hover:-translate-y-1 transition-all duration-300"
+              className={
+                s.solemn
+                  ? "rounded-2xl p-6 group hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-cream to-cream-deep border border-deep-maroon/15 shadow-sm sm:col-span-2 lg:col-span-3"
+                  : "divine-border bg-cream rounded-2xl p-6 group hover:-translate-y-1 transition-all duration-300"
+              }
               style={{ animation: `fade-up 0.6s ease-out ${i * 0.05}s both` }}
             >
               <div className="text-5xl mb-3 group-hover:scale-110 transition-transform">{s.icon}</div>
               <h3 className="font-display text-xl text-maroon mb-1">{s.title}</h3>
               <p className="text-sm text-muted-foreground">{s.desc}</p>
+              {s.body && (
+                <p className="mt-4 text-sm text-deep-maroon/85 leading-relaxed border-t border-deep-maroon/10 pt-4">
+                  {s.body}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -306,50 +310,106 @@ function Packages() {
   );
 }
 
+const PORTFOLIO_STORAGE_KEY = "dp_portfolio_photos";
+
 function Portfolio() {
+  const [photos, setPhotos] = useState<string[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PORTFOLIO_STORAGE_KEY);
+      if (stored) setPhotos(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  const persist = (next: string[]) => {
+    setPhotos(next);
+    try {
+      localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+  };
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const readers = Array.from(files).map(
+      (f) =>
+        new Promise<string>((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(String(r.result));
+          r.onerror = rej;
+          r.readAsDataURL(f);
+        }),
+    );
+    const urls = await Promise.all(readers);
+    persist([...urls, ...photos]);
+  };
+
+  const remove = (idx: number) => persist(photos.filter((_, i) => i !== idx));
+
   return (
     <section id="portfolio" className="relative py-20 md:py-28 bg-gradient-to-b from-cream-deep to-cream">
       <div className="container mx-auto px-4">
         <SectionHeader sub="पवित्र क्षणों की दिव्य झलकियाँ">पोर्टफोलियो</SectionHeader>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {galleryImages.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setLightbox(img)}
-              className="group relative overflow-hidden rounded-2xl divine-border aspect-square"
-            >
-              <img
-                src={img}
-                alt={`कार्यक्रम ${i + 1}`}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                loading="lazy"
-                width={1024}
-                height={1024}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-deep-maroon/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                <span className="text-cream text-sm font-medium">कार्यक्रम झलक</span>
-              </div>
-            </button>
-          ))}
+
+        <div className="flex justify-center mb-10">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              handleFiles(e.target.files);
+              if (inputRef.current) inputRef.current.value = "";
+            }}
+          />
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="btn-divine animate-pulse-glow text-base"
+          >
+            <Plus size={20} /> फ़ोटो जोड़ें
+          </button>
         </div>
 
-        <div className="mt-16">
-          <h3 className="font-display text-2xl text-maroon text-center mb-6">🎬 लघु वीडियो (Reels)</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {galleryImages.slice(0, 4).map((img, i) => (
-              <div key={i} className="relative aspect-[9/16] rounded-2xl overflow-hidden divine-border group cursor-pointer">
-                <img src={img} alt={`रील ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition" loading="lazy" width={400} height={711} />
-                <div className="absolute inset-0 bg-gradient-to-t from-deep-maroon/80 to-transparent" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-14 h-14 rounded-full bg-cream/90 flex items-center justify-center text-saffron-deep text-2xl shadow-divine">▶</div>
-                </div>
-                <div className="absolute bottom-3 left-3 text-cream text-xs">0:{30 + i * 5}</div>
+        {photos.length === 0 ? (
+          <div className="divine-border bg-cream rounded-3xl py-20 text-center text-muted-foreground">
+            <Camera size={48} className="mx-auto mb-4 text-saffron-deep/60" />
+            <p>अभी कोई फ़ोटो नहीं। ऊपर "फ़ोटो जोड़ें" बटन से अपनी पहली तस्वीर जोड़ें।</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+            {photos.map((img, i) => (
+              <div
+                key={i}
+                className="group relative overflow-hidden rounded-2xl divine-border aspect-square"
+              >
+                <button
+                  type="button"
+                  onClick={() => setLightbox(img)}
+                  className="absolute inset-0 w-full h-full"
+                  aria-label={`फ़ोटो ${i + 1} देखें`}
+                >
+                  <img
+                    src={img}
+                    alt={`कार्यक्रम ${i + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(i)}
+                  className="absolute top-2 right-2 w-9 h-9 rounded-full bg-deep-maroon/85 text-cream flex items-center justify-center hover:bg-deep-maroon shadow-lg z-10"
+                  aria-label="फ़ोटो हटाएं"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-muted-foreground mt-4">अधिक वीडियो के लिए YouTube चैनल पर जाएं</p>
-        </div>
+        )}
       </div>
 
       {lightbox && (
@@ -362,6 +422,70 @@ function Portfolio() {
         </div>
       )}
     </section>
+  );
+}
+
+const ARTIST_PHOTO_KEY = "dp_artist_photo";
+
+function PhotoUpload() {
+  const [photo, setPhoto] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(ARTIST_PHOTO_KEY);
+      if (v) setPhoto(v);
+    } catch {}
+  }, []);
+
+  const onFile = (file?: File) => {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const url = String(r.result);
+      setPhoto(url);
+      try {
+        localStorage.setItem(ARTIST_PHOTO_KEY, url);
+      } catch {}
+    };
+    r.readAsDataURL(file);
+  };
+
+  return (
+    <div className="relative divine-border rounded-3xl overflow-hidden bg-cream-deep">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          onFile(e.target.files?.[0]);
+          if (inputRef.current) inputRef.current.value = "";
+        }}
+      />
+      {photo ? (
+        <>
+          <img src={photo} alt="धीरज पांडेय" className="w-full h-[500px] object-cover" />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 btn-divine text-sm"
+          >
+            <Camera size={16} /> फ़ोटो बदलें
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="w-full h-[500px] flex flex-col items-center justify-center gap-4 text-maroon hover:bg-cream transition"
+        >
+          <Camera size={56} className="text-saffron-deep" />
+          <span className="btn-divine text-base">📷 फ़ोटो अपलोड करें</span>
+          <span className="text-xs text-muted-foreground">अपने गैलरी से तस्वीर चुनें</span>
+        </button>
+      )}
+    </div>
   );
 }
 
