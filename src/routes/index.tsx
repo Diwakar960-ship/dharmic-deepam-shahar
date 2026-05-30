@@ -4,6 +4,7 @@ import heroImg from "@/assets/hero-divine.jpg";
 import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
+import { addPhoto, compressImage, deletePhoto, getAllPhotos, MAX_PHOTOS, type PortfolioPhoto } from "@/lib/portfolio-db";
 import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
