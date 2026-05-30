@@ -237,12 +237,21 @@ function Services() {
           {SERVICES.map((s, i) => (
             <div
               key={s.title}
-              className="divine-border bg-cream rounded-2xl p-6 group hover:-translate-y-1 transition-all duration-300"
+              className={
+                s.solemn
+                  ? "rounded-2xl p-6 group hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-cream to-cream-deep border border-deep-maroon/15 shadow-sm sm:col-span-2 lg:col-span-3"
+                  : "divine-border bg-cream rounded-2xl p-6 group hover:-translate-y-1 transition-all duration-300"
+              }
               style={{ animation: `fade-up 0.6s ease-out ${i * 0.05}s both` }}
             >
               <div className="text-5xl mb-3 group-hover:scale-110 transition-transform">{s.icon}</div>
               <h3 className="font-display text-xl text-maroon mb-1">{s.title}</h3>
               <p className="text-sm text-muted-foreground">{s.desc}</p>
+              {s.body && (
+                <p className="mt-4 text-sm text-deep-maroon/85 leading-relaxed border-t border-deep-maroon/10 pt-4">
+                  {s.body}
+                </p>
+              )}
             </div>
           ))}
         </div>
