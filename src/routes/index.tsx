@@ -295,50 +295,73 @@ function Packages() {
   );
 }
 
-const PORTFOLIO_STORAGE_KEY = "dp_portfolio_photos";
-
 function Portfolio() {
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(PORTFOLIO_STORAGE_KEY);
-      if (stored) setPhotos(JSON.parse(stored));
-    } catch {}
+    getAllPhotos().then(setPhotos).catch(() => {});
   }, []);
 
-  const persist = (next: string[]) => {
-    setPhotos(next);
-    try {
-      localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(next));
-    } catch {}
+  const showMessage = (msg: string) => {
+    setMessage(msg);
+    setTimeout(() => setMessage(null), 4000);
   };
 
   const handleFiles = async (files: FileList | null) => {
-    if (!files) return;
-    const readers = Array.from(files).map(
-      (f) =>
-        new Promise<string>((res, rej) => {
-          const r = new FileReader();
-          r.onload = () => res(String(r.result));
-          r.onerror = rej;
-          r.readAsDataURL(f);
-        }),
-    );
-    const urls = await Promise.all(readers);
-    persist([...urls, ...photos]);
+    if (!files || files.length === 0) return;
+    const current = photos.length;
+    const remaining = MAX_PHOTOS - current;
+    if (remaining <= 0) {
+      showMessage("अधिकतम 30 फ़ोटो अपलोड हो चुकी हैं");
+      return;
+    }
+    const toProcess = Array.from(files).slice(0, remaining);
+    if (files.length > remaining) {
+      showMessage(`केवल ${remaining} और फ़ोटो जोड़ी जा सकती हैं। शेष फ़ोटो छोड़ी गईं।`);
+    }
+    setLoading(true);
+    let failed = 0;
+    const added: PortfolioPhoto[] = [];
+    for (const file of toProcess) {
+      try {
+        const dataUrl = await compressImage(file);
+        const photo: PortfolioPhoto = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          dataUrl,
+          createdAt: Date.now(),
+        };
+        await addPhoto(photo);
+        added.push(photo);
+      } catch {
+        failed++;
+      }
+    }
+    if (added.length > 0) {
+      setPhotos((prev) => [...added.reverse(), ...prev]);
+    }
+    setLoading(false);
+    if (failed > 0) {
+      showMessage("यह फ़ोटो अपलोड नहीं हो सकी, दूसरी फ़ोटो चुनें");
+    }
   };
 
-  const remove = (idx: number) => persist(photos.filter((_, i) => i !== idx));
+  const remove = async (id: string) => {
+    try {
+      await deletePhoto(id);
+      setPhotos((prev) => prev.filter((p) => p.id !== id));
+    } catch {}
+  };
 
   return (
     <section id="portfolio" className="relative py-20 md:py-28 bg-gradient-to-b from-cream-deep to-cream">
       <div className="container mx-auto px-4">
         <SectionHeader sub="पवित्र क्षणों की दिव्य झलकियाँ">पोर्टफोलियो</SectionHeader>
 
-        <div className="flex justify-center mb-10">
+        <div className="flex flex-col items-center gap-3 mb-10">
           <input
             ref={inputRef}
             type="file"
@@ -352,10 +375,19 @@ function Portfolio() {
           />
           <button
             onClick={() => inputRef.current?.click()}
-            className="btn-divine animate-pulse-glow text-base"
+            disabled={loading}
+            className="btn-divine animate-pulse-glow text-base disabled:opacity-60"
           >
-            <Plus size={20} /> फ़ोटो जोड़ें
+            <Plus size={20} /> {loading ? "फ़ोटो अपलोड हो रही है..." : "फ़ोटो जोड़ें"}
           </button>
+          <div className="text-sm text-deep-maroon/80 font-medium">
+            {photos.length}/{MAX_PHOTOS} फ़ोटो
+          </div>
+          {message && (
+            <div className="text-sm text-saffron-deep bg-saffron/10 border border-saffron/40 rounded-full px-4 py-1">
+              {message}
+            </div>
+          )}
         </div>
 
         {photos.length === 0 ? (
@@ -364,20 +396,20 @@ function Portfolio() {
             <p>अभी कोई फ़ोटो नहीं। ऊपर "फ़ोटो जोड़ें" बटन से अपनी पहली तस्वीर जोड़ें।</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
-            {photos.map((img, i) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {photos.map((p, i) => (
               <div
-                key={i}
+                key={p.id}
                 className="group relative overflow-hidden rounded-2xl divine-border aspect-square"
               >
                 <button
                   type="button"
-                  onClick={() => setLightbox(img)}
+                  onClick={() => setLightbox(p.dataUrl)}
                   className="absolute inset-0 w-full h-full"
                   aria-label={`फ़ोटो ${i + 1} देखें`}
                 >
                   <img
-                    src={img}
+                    src={p.dataUrl}
                     alt={`कार्यक्रम ${i + 1}`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     loading="lazy"
@@ -385,11 +417,11 @@ function Portfolio() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => remove(i)}
+                  onClick={() => remove(p.id)}
                   className="absolute top-2 right-2 w-9 h-9 rounded-full bg-deep-maroon/85 text-cream flex items-center justify-center hover:bg-deep-maroon shadow-lg z-10"
                   aria-label="फ़ोटो हटाएं"
                 >
-                  <Trash2 size={16} />
+                  <X size={18} />
                 </button>
               </div>
             ))}
