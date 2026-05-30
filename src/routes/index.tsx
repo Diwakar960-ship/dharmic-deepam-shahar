@@ -239,8 +239,6 @@ function Services() {
               <p className="text-sm text-muted-foreground">{s.desc}</p>
             </div>
           ))}
-            </div>
-          ))}
         </div>
       </div>
     </section>
