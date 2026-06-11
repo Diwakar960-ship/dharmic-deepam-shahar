@@ -11,7 +11,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "धीरज पांडेय — शाहपुर घराना | भक्ति की आवाज़" },
-      { name: "description", content: "धीरज पांडेय — शाहपुर घराना के प्रसिद्ध भजन गायक। भजन संध्या, सुंदरकांड, जागरात, अखंड रामायण, तिलक महोत्सव। पटना, बिहार के सभी जिलों में बुकिंग उपलब्ध।" },
+      { name: "description", content: "धीरज पांडेय — शाहपुर घराना के प्रसिद्ध भजन गायक। भजन संध्या, सुंदरकांड, जागरण, अखंड रामायण, तिलक महोत्सव। पटना, बिहार के सभी जिलों में बुकिंग उपलब्ध।" },
       { property: "og:title", content: "धीरज पांडेय — शाहपुर घराना" },
       { property: "og:description", content: "भक्ति की आवाज़ — 10+ वर्षों का अनुभव, 1000+ कार्यक्रम।" },
     ],
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
 const SERVICES = [
   { icon: "🪔", title: "भजन संध्या", desc: "मधुर भजनों की दिव्य संध्या" },
   { icon: "📖", title: "सुंदरकांड पाठ", desc: "श्री रामचरितमानस का पावन पाठ" },
-  { icon: "🌙", title: "जागरात / रात्रि जागरण", desc: "माता रानी की भव्य जागरण" },
+  { icon: "🌙", title: "रात्रि जागरण", desc: "भक्तिमय संगीत का भव्य जागरण" },
   { icon: "📿", title: "अखंड रामायण", desc: "24 घंटे का अखंड पाठ" },
   { icon: "💍", title: "तिलक महोत्सव / विवाह संस्कार", desc: "मांगलिक अवसरों का संगीत" },
   { icon: "🙏", title: "नवरात्रि जागरण", desc: "9 रातों का दिव्य आयोजन" },
@@ -200,7 +200,7 @@ function About() {
               में अपनी मधुर वाणी से लाखों श्रद्धालुओं के हृदय में भक्ति की ज्योति प्रज्वलित की है।
             </p>
             <p className="text-deep-maroon/85 leading-relaxed">
-              भजन संध्या से लेकर अखंड रामायण, सुंदरकांड पाठ, जागरात, तिलक महोत्सव एवं समस्त
+              भजन संध्या से लेकर अखंड रामायण, सुंदरकांड पाठ, जागरण, तिलक महोत्सव एवं समस्त
               हिंदू धार्मिक अनुष्ठानों में उनकी संगीतमय प्रस्तुति श्रद्धा और शक्ति का संचार करती है।
             </p>
             <div className="grid grid-cols-2 gap-3 pt-2">
@@ -470,7 +470,7 @@ function PhotoUpload() {
   };
 
   return (
-    <div className="relative divine-border rounded-3xl overflow-hidden bg-cream-deep">
+    <div className="relative divine-border rounded-2xl md:rounded-3xl overflow-hidden bg-cream-deep w-full">
       <input
         ref={inputRef}
         type="file"
@@ -483,11 +483,15 @@ function PhotoUpload() {
       />
       {photo ? (
         <>
-          <img src={photo} alt="धीरज पांडेय" className="w-full h-[500px] object-cover" />
+          <img
+            src={photo}
+            alt="धीरज पांडेय"
+            className="w-full h-auto max-w-full object-contain"
+          />
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 btn-divine text-sm"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 btn-divine text-sm"
           >
             <Camera size={16} /> फ़ोटो बदलें
           </button>
@@ -496,9 +500,9 @@ function PhotoUpload() {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="w-full h-[500px] flex flex-col items-center justify-center gap-4 text-maroon hover:bg-cream transition"
+          className="w-full flex flex-col items-center justify-center gap-3 text-maroon hover:bg-cream transition py-16 md:py-24"
         >
-          <Camera size={56} className="text-saffron-deep" />
+          <Camera size={48} className="text-saffron-deep" />
           <span className="btn-divine text-base">📷 फ़ोटो अपलोड करें</span>
           <span className="text-xs text-muted-foreground">अपने गैलरी से तस्वीर चुनें</span>
         </button>
