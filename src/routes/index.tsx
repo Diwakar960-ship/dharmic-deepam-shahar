@@ -361,25 +361,21 @@ function Packages() {
   );
 }
 
-function Portfolio() {
+function Portfolio({ admin }: { admin: boolean }) {
   const [photos, setPhotos] = useState<CloudPortfolioPhoto[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [admin, setAdmin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadPhotos = useServerFn(getPortfolioPhotos);
 
   useEffect(() => {
     loadPhotos().then(setPhotos).catch(() => setMessage("पोर्टफोलियो अभी लोड नहीं हो सका"));
-    supabase.auth.getUser().then(({ data }) => {
-      setAdmin(data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
-    });
-    return () => listener.subscription.unsubscribe();
   }, [loadPhotos]);
+
+  useEffect(() => {
+    if (admin) showMessage("सुपाबेस से कनेक्ट हो गया — कृपया फ़ोटो दोबारा अपलोड करें");
+  }, [admin]);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
@@ -408,7 +404,7 @@ function Portfolio() {
         const user = userData.user;
         if (!user || user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error("unauthorized");
         const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-        const { error: uploadError } = await supabase.storage.from("portfolio-photos").upload(path, blob, {
+        const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, {
           contentType: "image/jpeg",
           upsert: false,
         });
@@ -419,7 +415,7 @@ function Portfolio() {
           sort_order: Date.now(),
         });
         if (insertError) {
-          await supabase.storage.from("portfolio-photos").remove([path]);
+          await supabase.storage.from("photos").remove([path]);
           throw insertError;
         }
       } catch {
@@ -435,7 +431,7 @@ function Portfolio() {
 
   const remove = async (photo: CloudPortfolioPhoto) => {
     try {
-      const { error: storageError } = await supabase.storage.from("portfolio-photos").remove([photo.storagePath]);
+      const { error: storageError } = await supabase.storage.from("photos").remove([photo.storagePath]);
       if (storageError) throw storageError;
       const { error: rowError } = await supabase.from("portfolio_photos").delete().eq("id", photo.id);
       if (rowError) throw rowError;
@@ -443,14 +439,6 @@ function Portfolio() {
     } catch {
       showMessage("फ़ोटो हटाई नहीं जा सकी, कृपया फिर प्रयास करें");
     }
-  };
-
-  const signIn = async () => {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/#portfolio`,
-      extraParams: { login_hint: "diwakarpandey6611@gmail.com", prompt: "select_account" },
-    });
-    if (result.error) showMessage("लॉगिन नहीं हो सका, कृपया फिर प्रयास करें");
   };
 
   return (
@@ -472,15 +460,12 @@ function Portfolio() {
           />
           {admin ? (
             <>
-              <button onClick={() => inputRef.current?.click()} disabled={loading} className="btn-divine animate-pulse-glow text-base disabled:opacity-60">
-                <Plus size={20} /> {loading ? "फ़ोटो अपलोड हो रही है..." : "फ़ोटो जोड़ें"}
-              </button>
+               <Button onClick={() => inputRef.current?.click()} disabled={loading} className="rounded-full animate-pulse-glow text-base">
+                 <Plus size={20} /> {loading ? "फ़ोटो अपलोड हो रही है..." : "+ फ़ोटो जोड़ें"}
+               </Button>
               <div className="text-sm text-deep-maroon/80 font-medium">{photos.length}/{MAX_PHOTOS} फ़ोटो</div>
-              <button type="button" onClick={() => supabase.auth.signOut()} className="text-xs text-saffron-deep underline">एडमिन लॉगआउट</button>
             </>
-          ) : (
-            <button type="button" onClick={signIn} className="btn-outline-gold text-sm">एडमिन लॉगिन</button>
-          )}
+           ) : null}
           {message && (
             <div className="text-sm text-saffron-deep bg-saffron/10 border border-saffron/40 rounded-full px-4 py-1">
               {message}
