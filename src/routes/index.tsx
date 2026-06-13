@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import heroImg from "@/assets/hero-divine.jpg";
 import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
-import { addPhoto, compressImage, deletePhoto, getAllPhotos, MAX_PHOTOS, type PortfolioPhoto } from "@/lib/portfolio-db";
+import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
+import { getPortfolioPhotos, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
