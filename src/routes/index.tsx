@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import heroImg from "@/assets/hero-divine.jpg";
 import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
-import { addPhoto, compressImage, deletePhoto, getAllPhotos, MAX_PHOTOS, type PortfolioPhoto } from "@/lib/portfolio-db";
+import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
+import { getPortfolioPhotos, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -297,15 +301,24 @@ function Packages() {
 }
 
 function Portfolio() {
-  const [photos, setPhotos] = useState<PortfolioPhoto[]>([]);
+  const [photos, setPhotos] = useState<CloudPortfolioPhoto[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [admin, setAdmin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const loadPhotos = useServerFn(getPortfolioPhotos);
 
   useEffect(() => {
-    getAllPhotos().then(setPhotos).catch(() => {});
-  }, []);
+    loadPhotos().then(setPhotos).catch(() => setMessage("पोर्टफोलियो अभी लोड नहीं हो सका"));
+    supabase.auth.getUser().then(({ data }) => {
+      setAdmin(data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [loadPhotos]);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
@@ -313,7 +326,7 @@ function Portfolio() {
   };
 
   const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    if (!admin || !files || files.length === 0) return;
     const current = photos.length;
     const remaining = MAX_PHOTOS - current;
     if (remaining <= 0) {
@@ -326,35 +339,57 @@ function Portfolio() {
     }
     setLoading(true);
     let failed = 0;
-    const added: PortfolioPhoto[] = [];
     for (const file of toProcess) {
       try {
         const dataUrl = await compressImage(file);
-        const photo: PortfolioPhoto = {
-          id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-          dataUrl,
-          createdAt: Date.now(),
-        };
-        await addPhoto(photo);
-        added.push(photo);
+        const blob = await fetch(dataUrl).then((response) => response.blob());
+        const { data: userData } = await supabase.auth.getUser();
+        const user = userData.user;
+        if (!user || user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error("unauthorized");
+        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+        const { error: uploadError } = await supabase.storage.from("portfolio-photos").upload(path, blob, {
+          contentType: "image/jpeg",
+          upsert: false,
+        });
+        if (uploadError) throw uploadError;
+        const { error: insertError } = await supabase.from("portfolio_photos").insert({
+          storage_path: path,
+          uploaded_by: user.id,
+          sort_order: Date.now(),
+        });
+        if (insertError) {
+          await supabase.storage.from("portfolio-photos").remove([path]);
+          throw insertError;
+        }
       } catch {
         failed++;
       }
     }
-    if (added.length > 0) {
-      setPhotos((prev) => [...added.reverse(), ...prev]);
-    }
+    if (failed < toProcess.length) await loadPhotos().then(setPhotos);
     setLoading(false);
     if (failed > 0) {
       showMessage("यह फ़ोटो अपलोड नहीं हो सकी, दूसरी फ़ोटो चुनें");
     }
   };
 
-  const remove = async (id: string) => {
+  const remove = async (photo: CloudPortfolioPhoto) => {
     try {
-      await deletePhoto(id);
-      setPhotos((prev) => prev.filter((p) => p.id !== id));
-    } catch {}
+      const { error: storageError } = await supabase.storage.from("portfolio-photos").remove([photo.storagePath]);
+      if (storageError) throw storageError;
+      const { error: rowError } = await supabase.from("portfolio_photos").delete().eq("id", photo.id);
+      if (rowError) throw rowError;
+      setPhotos((prev) => prev.filter((item) => item.id !== photo.id));
+    } catch {
+      showMessage("फ़ोटो हटाई नहीं जा सकी, कृपया फिर प्रयास करें");
+    }
+  };
+
+  const signIn = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: `${window.location.origin}/#portfolio`,
+      extraParams: { login_hint: "diwakarpandey6611@gmail.com", prompt: "select_account" },
+    });
+    if (result.error) showMessage("लॉगिन नहीं हो सका, कृपया फिर प्रयास करें");
   };
 
   return (
@@ -374,16 +409,17 @@ function Portfolio() {
               if (inputRef.current) inputRef.current.value = "";
             }}
           />
-          <button
-            onClick={() => inputRef.current?.click()}
-            disabled={loading}
-            className="btn-divine animate-pulse-glow text-base disabled:opacity-60"
-          >
-            <Plus size={20} /> {loading ? "फ़ोटो अपलोड हो रही है..." : "फ़ोटो जोड़ें"}
-          </button>
-          <div className="text-sm text-deep-maroon/80 font-medium">
-            {photos.length}/{MAX_PHOTOS} फ़ोटो
-          </div>
+          {admin ? (
+            <>
+              <button onClick={() => inputRef.current?.click()} disabled={loading} className="btn-divine animate-pulse-glow text-base disabled:opacity-60">
+                <Plus size={20} /> {loading ? "फ़ोटो अपलोड हो रही है..." : "फ़ोटो जोड़ें"}
+              </button>
+              <div className="text-sm text-deep-maroon/80 font-medium">{photos.length}/{MAX_PHOTOS} फ़ोटो</div>
+              <button type="button" onClick={() => supabase.auth.signOut()} className="text-xs text-saffron-deep underline">एडमिन लॉगआउट</button>
+            </>
+          ) : (
+            <button type="button" onClick={signIn} className="btn-outline-gold text-sm">एडमिन लॉगिन</button>
+          )}
           {message && (
             <div className="text-sm text-saffron-deep bg-saffron/10 border border-saffron/40 rounded-full px-4 py-1">
               {message}
@@ -394,7 +430,7 @@ function Portfolio() {
         {photos.length === 0 ? (
           <div className="divine-border bg-cream rounded-3xl py-20 text-center text-muted-foreground">
             <Camera size={48} className="mx-auto mb-4 text-saffron-deep/60" />
-            <p>अभी कोई फ़ोटो नहीं। ऊपर "फ़ोटो जोड़ें" बटन से अपनी पहली तस्वीर जोड़ें।</p>
+            <p>{admin ? "अभी कोई फ़ोटो नहीं। ऊपर बटन से अपनी पहली तस्वीर जोड़ें।" : "पोर्टफोलियो फ़ोटो जल्द उपलब्ध होंगी।"}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
@@ -405,25 +441,22 @@ function Portfolio() {
               >
                 <button
                   type="button"
-                  onClick={() => setLightbox(p.dataUrl)}
+                    onClick={() => setLightbox(p.imageUrl)}
                   className="absolute inset-0 w-full h-full"
                   aria-label={`फ़ोटो ${i + 1} देखें`}
                 >
                   <img
-                    src={p.dataUrl}
+                    src={p.imageUrl}
                     alt={`कार्यक्रम ${i + 1}`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     loading="lazy"
                   />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => remove(p.id)}
-                  className="absolute top-2 right-2 w-9 h-9 rounded-full bg-deep-maroon/85 text-cream flex items-center justify-center hover:bg-deep-maroon shadow-lg z-10"
-                  aria-label="फ़ोटो हटाएं"
-                >
-                  <X size={18} />
-                </button>
+                {admin && (
+                  <button type="button" onClick={() => remove(p)} className="absolute top-2 right-2 w-9 h-9 rounded-full bg-deep-maroon/85 text-cream flex items-center justify-center hover:bg-deep-maroon shadow-lg z-10" aria-label="फ़ोटो हटाएं">
+                    <X size={18} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
