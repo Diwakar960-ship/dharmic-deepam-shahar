@@ -48,7 +48,15 @@ function Home() {
   const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAdmin(data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com"));
+    supabase.auth.getUser().then(async ({ data }) => {
+      const isAdmin = data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com";
+      if (isAdmin && sessionStorage.getItem("portfolio_admin_session") !== "active") {
+        await supabase.auth.signOut();
+        setAdmin(false);
+        return;
+      }
+      setAdmin(isAdmin);
+    });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
     });
@@ -110,7 +118,10 @@ function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => v
         <Link to="/booking" className="hidden md:inline-flex btn-divine text-sm">
           <Sparkles size={16} /> अभी बुक करें
         </Link>
-        {admin && <Button type="button" size="sm" variant="outline" onClick={() => supabase.auth.signOut()}>लॉगआउट</Button>}
+        {admin && <Button type="button" size="sm" variant="outline" onClick={() => {
+          sessionStorage.removeItem("portfolio_admin_session");
+          supabase.auth.signOut();
+        }}>लॉगआउट</Button>}
         <button className="lg:hidden p-2 text-maroon" onClick={() => setOpen(!open)}>
           {open ? <X /> : <span className="text-2xl">☰</span>}
         </button>
@@ -146,6 +157,7 @@ function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       setLoading(false);
       return;
     }
+    sessionStorage.setItem("portfolio_admin_session", "active");
     setLoading(false);
     onOpenChange(false);
   };
@@ -555,6 +567,8 @@ function PhotoUpload({ admin }: { admin: boolean }) {
         await supabase.storage.from("photos").remove([previous.storagePath]);
       }
       await loadArtistPhoto().then(setPhoto);
+    } catch {
+      // Keep the current image visible if the replacement could not be saved.
     } finally {
       setLoading(false);
     }
