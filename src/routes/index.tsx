@@ -522,30 +522,42 @@ function Portfolio({ admin }: { admin: boolean }) {
   );
 }
 
-const ARTIST_PHOTO_KEY = "dp_artist_photo";
-
-function PhotoUpload() {
-  const [photo, setPhoto] = useState<string | null>(null);
+function PhotoUpload({ admin }: { admin: boolean }) {
+  const [photo, setPhoto] = useState<CloudArtistPhoto | null>(null);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const loadArtistPhoto = useServerFn(getArtistPhoto);
 
   useEffect(() => {
-    try {
-      const v = localStorage.getItem(ARTIST_PHOTO_KEY);
-      if (v) setPhoto(v);
-    } catch {}
-  }, []);
+    loadArtistPhoto().then(setPhoto).catch(() => setPhoto(null));
+  }, [loadArtistPhoto]);
 
-  const onFile = (file?: File) => {
+  const onFile = async (file?: File) => {
     if (!file) return;
-    const r = new FileReader();
-    r.onload = () => {
-      const url = String(r.result);
-      setPhoto(url);
-      try {
-        localStorage.setItem(ARTIST_PHOTO_KEY, url);
-      } catch {}
-    };
-    r.readAsDataURL(file);
+    setLoading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user || user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error("unauthorized");
+      const dataUrl = await compressImage(file, 1200, 0.82);
+      const blob = await fetch(dataUrl).then((response) => response.blob());
+      const path = `${user.id}/artist-${crypto.randomUUID()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
+      if (uploadError) throw uploadError;
+      const { error: insertError } = await supabase.from("artist_photo").insert({ storage_path: path, uploaded_by: user.id });
+      if (insertError) {
+        await supabase.storage.from("photos").remove([path]);
+        throw insertError;
+      }
+      const previous = photo;
+      if (previous) {
+        await supabase.from("artist_photo").delete().eq("id", previous.id);
+        await supabase.storage.from("photos").remove([previous.storagePath]);
+      }
+      await loadArtistPhoto().then(setPhoto);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -563,28 +575,24 @@ function PhotoUpload() {
       {photo ? (
         <>
           <img
-            src={photo}
+             src={photo.imageUrl}
             alt="धीरज पांडेय"
             className="w-full h-auto max-w-full object-contain"
           />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 btn-divine text-sm"
-          >
-            <Camera size={16} /> फ़ोटो बदलें
-          </button>
+           {admin && <Button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full">
+             <Camera size={16} /> {loading ? "अपलोड हो रही है..." : "फ़ोटो बदलें"}
+           </Button>}
         </>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="w-full flex flex-col items-center justify-center gap-3 text-maroon hover:bg-cream transition py-16 md:py-24"
-        >
+       ) : admin ? (
+         <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} className="w-full h-auto rounded-none flex-col gap-3 text-maroon py-16 md:py-24">
           <Camera size={48} className="text-saffron-deep" />
-          <span className="btn-divine text-base">📷 फ़ोटो अपलोड करें</span>
+           <span className="text-base">📷 फ़ोटो अपलोड करें</span>
           <span className="text-xs text-muted-foreground">अपने गैलरी से तस्वीर चुनें</span>
-        </button>
+         </Button>
+       ) : (
+         <div className="w-full flex flex-col items-center justify-center gap-3 text-muted-foreground py-16 md:py-24">
+           <Camera size={48} className="text-saffron-deep/60" />
+         </div>
       )}
     </div>
   );
