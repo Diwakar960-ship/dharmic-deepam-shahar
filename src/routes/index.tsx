@@ -6,10 +6,11 @@ import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
 import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
-import { getPortfolioPhotos, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
+import { getArtistPhoto, getPortfolioPhotos, type CloudArtistPhoto, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,24 +44,45 @@ interface Review {
 }
 
 function Home() {
+  const [admin, setAdmin] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      const isAdmin = data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com";
+      if (isAdmin && sessionStorage.getItem("portfolio_admin_session") !== "active") {
+        await supabase.auth.signOut();
+        setAdmin(false);
+        return;
+      }
+      setAdmin(isAdmin);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
   return (
     <div className="relative overflow-x-hidden">
       <FloatingPetals />
-      <Header />
+      <Header admin={admin} onAdminLogin={() => setLoginOpen(true)} />
       <Hero />
-      <About />
+      <About admin={admin} />
       <Services />
       <Packages />
-      <Portfolio />
+      <Portfolio admin={admin} />
       <Reviews />
       <Contact />
       <Footer />
+      <AdminLoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </div>
   );
 }
 
-function Header() {
+function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => void }) {
   const [open, setOpen] = useState(false);
+  const logoClicks = useRef<number[]>([]);
   const links = [
     { href: "#home", label: "मुख्य" },
     { href: "#about", label: "हमारे बारे में" },
@@ -72,7 +94,14 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-cream/80 border-b border-saffron/20">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
-        <a href="#home" className="flex items-center gap-2">
+        <a href="#home" className="flex items-center gap-2" onClick={() => {
+          const now = Date.now();
+          logoClicks.current = [...logoClicks.current.filter((time) => now - time < 15000), now];
+          if (logoClicks.current.length === 5) {
+            logoClicks.current = [];
+            onAdminLogin();
+          }
+        }}>
           <Om size={32} />
           <div className="leading-tight">
             <div className="font-display text-lg text-maroon">धीरज पांडेय</div>
@@ -89,6 +118,10 @@ function Header() {
         <Link to="/booking" className="hidden md:inline-flex btn-divine text-sm">
           <Sparkles size={16} /> अभी बुक करें
         </Link>
+        {admin && <Button type="button" size="sm" variant="outline" onClick={() => {
+          sessionStorage.removeItem("portfolio_admin_session");
+          supabase.auth.signOut();
+        }}>लॉगआउट</Button>}
         <button className="lg:hidden p-2 text-maroon" onClick={() => setOpen(!open)}>
           {open ? <X /> : <span className="text-2xl">☰</span>}
         </button>
@@ -104,6 +137,46 @@ function Header() {
         </div>
       )}
     </header>
+  );
+}
+
+function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const login = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (authError || data.user?.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") {
+      if (data.session) await supabase.auth.signOut();
+      setError("गलत ईमेल या पासवर्ड");
+      setLoading(false);
+      return;
+    }
+    sessionStorage.setItem("portfolio_admin_session", "active");
+    setLoading(false);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm rounded-2xl divine-border">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl text-maroon">एडमिन लॉगिन</DialogTitle>
+          <DialogDescription>फ़ोटो प्रबंधन के लिए प्रवेश करें</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={login} className="space-y-4">
+          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ईमेल" autoComplete="username" required className="w-full px-4 py-3 rounded-xl bg-cream-deep border border-saffron/30 focus:outline-none focus:border-saffron text-maroon" />
+          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="पासवर्ड" autoComplete="current-password" required className="w-full px-4 py-3 rounded-xl bg-cream-deep border border-saffron/30 focus:outline-none focus:border-saffron text-maroon" />
+          {error && <p className="text-sm text-destructive font-medium">{error}</p>}
+          <Button type="submit" disabled={loading} className="w-full rounded-full">{loading ? "लॉगिन हो रहा है..." : "लॉगिन"}</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -180,7 +253,7 @@ function SectionHeader({ children, sub }: { children: React.ReactNode; sub?: str
   );
 }
 
-function About() {
+function About({ admin }: { admin: boolean }) {
   return (
     <section id="about" className="relative py-20 md:py-28">
       <div className="container mx-auto px-4">
@@ -188,7 +261,7 @@ function About() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-br from-saffron/20 to-gold/30 rounded-3xl blur-2xl" />
-            <PhotoUpload />
+            <PhotoUpload admin={admin} />
             <div className="absolute -bottom-6 -right-6 bg-cream divine-border rounded-2xl px-5 py-3 shadow-lg">
               <div className="text-xs text-maroon">शाहपुर घराना</div>
               <div className="font-display text-saffron-deep">परंपरा से जुड़ाव</div>
@@ -300,25 +373,21 @@ function Packages() {
   );
 }
 
-function Portfolio() {
+function Portfolio({ admin }: { admin: boolean }) {
   const [photos, setPhotos] = useState<CloudPortfolioPhoto[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [admin, setAdmin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadPhotos = useServerFn(getPortfolioPhotos);
 
   useEffect(() => {
     loadPhotos().then(setPhotos).catch(() => setMessage("पोर्टफोलियो अभी लोड नहीं हो सका"));
-    supabase.auth.getUser().then(({ data }) => {
-      setAdmin(data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
-    });
-    return () => listener.subscription.unsubscribe();
   }, [loadPhotos]);
+
+  useEffect(() => {
+    if (admin) showMessage("सुपाबेस से कनेक्ट हो गया — कृपया फ़ोटो दोबारा अपलोड करें");
+  }, [admin]);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
@@ -347,7 +416,7 @@ function Portfolio() {
         const user = userData.user;
         if (!user || user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error("unauthorized");
         const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-        const { error: uploadError } = await supabase.storage.from("portfolio-photos").upload(path, blob, {
+        const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, {
           contentType: "image/jpeg",
           upsert: false,
         });
@@ -358,7 +427,7 @@ function Portfolio() {
           sort_order: Date.now(),
         });
         if (insertError) {
-          await supabase.storage.from("portfolio-photos").remove([path]);
+          await supabase.storage.from("photos").remove([path]);
           throw insertError;
         }
       } catch {
@@ -374,7 +443,7 @@ function Portfolio() {
 
   const remove = async (photo: CloudPortfolioPhoto) => {
     try {
-      const { error: storageError } = await supabase.storage.from("portfolio-photos").remove([photo.storagePath]);
+      const { error: storageError } = await supabase.storage.from("photos").remove([photo.storagePath]);
       if (storageError) throw storageError;
       const { error: rowError } = await supabase.from("portfolio_photos").delete().eq("id", photo.id);
       if (rowError) throw rowError;
@@ -382,14 +451,6 @@ function Portfolio() {
     } catch {
       showMessage("फ़ोटो हटाई नहीं जा सकी, कृपया फिर प्रयास करें");
     }
-  };
-
-  const signIn = async () => {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/#portfolio`,
-      extraParams: { login_hint: "diwakarpandey6611@gmail.com", prompt: "select_account" },
-    });
-    if (result.error) showMessage("लॉगिन नहीं हो सका, कृपया फिर प्रयास करें");
   };
 
   return (
@@ -411,15 +472,12 @@ function Portfolio() {
           />
           {admin ? (
             <>
-              <button onClick={() => inputRef.current?.click()} disabled={loading} className="btn-divine animate-pulse-glow text-base disabled:opacity-60">
-                <Plus size={20} /> {loading ? "फ़ोटो अपलोड हो रही है..." : "फ़ोटो जोड़ें"}
-              </button>
+               <Button onClick={() => inputRef.current?.click()} disabled={loading} className="rounded-full animate-pulse-glow text-base">
+                 <Plus size={20} /> {loading ? "फ़ोटो अपलोड हो रही है..." : "+ फ़ोटो जोड़ें"}
+               </Button>
               <div className="text-sm text-deep-maroon/80 font-medium">{photos.length}/{MAX_PHOTOS} फ़ोटो</div>
-              <button type="button" onClick={() => supabase.auth.signOut()} className="text-xs text-saffron-deep underline">एडमिन लॉगआउट</button>
             </>
-          ) : (
-            <button type="button" onClick={signIn} className="btn-outline-gold text-sm">एडमिन लॉगिन</button>
-          )}
+           ) : null}
           {message && (
             <div className="text-sm text-saffron-deep bg-saffron/10 border border-saffron/40 rounded-full px-4 py-1">
               {message}
@@ -476,30 +534,44 @@ function Portfolio() {
   );
 }
 
-const ARTIST_PHOTO_KEY = "dp_artist_photo";
-
-function PhotoUpload() {
-  const [photo, setPhoto] = useState<string | null>(null);
+function PhotoUpload({ admin }: { admin: boolean }) {
+  const [photo, setPhoto] = useState<CloudArtistPhoto | null>(null);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const loadArtistPhoto = useServerFn(getArtistPhoto);
 
   useEffect(() => {
-    try {
-      const v = localStorage.getItem(ARTIST_PHOTO_KEY);
-      if (v) setPhoto(v);
-    } catch {}
-  }, []);
+    loadArtistPhoto().then(setPhoto).catch(() => setPhoto(null));
+  }, [loadArtistPhoto]);
 
-  const onFile = (file?: File) => {
+  const onFile = async (file?: File) => {
     if (!file) return;
-    const r = new FileReader();
-    r.onload = () => {
-      const url = String(r.result);
-      setPhoto(url);
-      try {
-        localStorage.setItem(ARTIST_PHOTO_KEY, url);
-      } catch {}
-    };
-    r.readAsDataURL(file);
+    setLoading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user || user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error("unauthorized");
+      const dataUrl = await compressImage(file, 1200, 0.82);
+      const blob = await fetch(dataUrl).then((response) => response.blob());
+      const path = `${user.id}/artist-${crypto.randomUUID()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
+      if (uploadError) throw uploadError;
+      const { error: insertError } = await supabase.from("artist_photo").insert({ storage_path: path, uploaded_by: user.id });
+      if (insertError) {
+        await supabase.storage.from("photos").remove([path]);
+        throw insertError;
+      }
+      const previous = photo;
+      if (previous) {
+        await supabase.from("artist_photo").delete().eq("id", previous.id);
+        await supabase.storage.from("photos").remove([previous.storagePath]);
+      }
+      await loadArtistPhoto().then(setPhoto);
+    } catch {
+      // Keep the current image visible if the replacement could not be saved.
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -517,28 +589,24 @@ function PhotoUpload() {
       {photo ? (
         <>
           <img
-            src={photo}
+             src={photo.imageUrl}
             alt="धीरज पांडेय"
             className="w-full h-auto max-w-full object-contain"
           />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 btn-divine text-sm"
-          >
-            <Camera size={16} /> फ़ोटो बदलें
-          </button>
+           {admin && <Button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full">
+             <Camera size={16} /> {loading ? "अपलोड हो रही है..." : "फ़ोटो बदलें"}
+           </Button>}
         </>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="w-full flex flex-col items-center justify-center gap-3 text-maroon hover:bg-cream transition py-16 md:py-24"
-        >
+       ) : admin ? (
+         <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} className="w-full h-auto rounded-none flex-col gap-3 text-maroon py-16 md:py-24">
           <Camera size={48} className="text-saffron-deep" />
-          <span className="btn-divine text-base">📷 फ़ोटो अपलोड करें</span>
+           <span className="text-base">📷 फ़ोटो अपलोड करें</span>
           <span className="text-xs text-muted-foreground">अपने गैलरी से तस्वीर चुनें</span>
-        </button>
+         </Button>
+       ) : (
+         <div className="w-full flex flex-col items-center justify-center gap-3 text-muted-foreground py-16 md:py-24">
+           <Camera size={48} className="text-saffron-deep/60" />
+         </div>
       )}
     </div>
   );

@@ -7,6 +7,12 @@ export interface CloudPortfolioPhoto {
   createdAt: string;
 }
 
+export interface CloudArtistPhoto {
+  id: string;
+  storagePath: string;
+  imageUrl: string;
+}
+
 export const getPortfolioPhotos = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
@@ -20,7 +26,7 @@ export const getPortfolioPhotos = createServerFn({ method: "GET" }).handler(asyn
   const photos = await Promise.all(
     (data ?? []).map(async (photo) => {
       const { data: signed } = await supabaseAdmin.storage
-        .from("portfolio-photos")
+        .from("photos")
         .createSignedUrl(photo.storage_path, 60 * 60);
       return {
         id: photo.id,
@@ -32,4 +38,28 @@ export const getPortfolioPhotos = createServerFn({ method: "GET" }).handler(asyn
   );
 
   return photos.filter((photo) => photo.imageUrl);
+});
+
+export const getArtistPhoto = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("artist_photo")
+    .select("id, storage_path")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error("कलाकार की फ़ोटो लोड नहीं हो सकी");
+  if (!data) return null;
+
+  const { data: signed } = await supabaseAdmin.storage
+    .from("photos")
+    .createSignedUrl(data.storage_path, 60 * 60);
+  if (!signed?.signedUrl) return null;
+
+  return {
+    id: data.id,
+    storagePath: data.storage_path,
+    imageUrl: signed.signedUrl,
+  } satisfies CloudArtistPhoto;
 });
