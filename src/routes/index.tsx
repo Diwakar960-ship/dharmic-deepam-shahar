@@ -96,7 +96,7 @@ function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => v
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
         <a href="#home" className="flex items-center gap-2" onClick={() => {
           const now = Date.now();
-          logoClicks.current = [...logoClicks.current.filter((time) => now - time < 5000), now];
+          logoClicks.current = [...logoClicks.current.filter((time) => now - time < 15000), now];
           if (logoClicks.current.length === 5) {
             logoClicks.current = [];
             onAdminLogin();
