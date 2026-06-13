@@ -6,10 +6,11 @@ import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
 import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
-import { getPortfolioPhotos, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
+import { getArtistPhoto, getPortfolioPhotos, type CloudArtistPhoto, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,24 +44,37 @@ interface Review {
 }
 
 function Home() {
+  const [admin, setAdmin] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setAdmin(data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com"));
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
   return (
     <div className="relative overflow-x-hidden">
       <FloatingPetals />
-      <Header />
+      <Header admin={admin} onAdminLogin={() => setLoginOpen(true)} />
       <Hero />
-      <About />
+      <About admin={admin} />
       <Services />
       <Packages />
-      <Portfolio />
+      <Portfolio admin={admin} />
       <Reviews />
       <Contact />
       <Footer />
+      <AdminLoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
     </div>
   );
 }
 
-function Header() {
+function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => void }) {
   const [open, setOpen] = useState(false);
+  const logoClicks = useRef<number[]>([]);
   const links = [
     { href: "#home", label: "मुख्य" },
     { href: "#about", label: "हमारे बारे में" },
@@ -72,7 +86,14 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-cream/80 border-b border-saffron/20">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
-        <a href="#home" className="flex items-center gap-2">
+        <a href="#home" className="flex items-center gap-2" onClick={() => {
+          const now = Date.now();
+          logoClicks.current = [...logoClicks.current.filter((time) => now - time < 1800), now];
+          if (logoClicks.current.length === 5) {
+            logoClicks.current = [];
+            onAdminLogin();
+          }
+        }}>
           <Om size={32} />
           <div className="leading-tight">
             <div className="font-display text-lg text-maroon">धीरज पांडेय</div>
@@ -89,6 +110,7 @@ function Header() {
         <Link to="/booking" className="hidden md:inline-flex btn-divine text-sm">
           <Sparkles size={16} /> अभी बुक करें
         </Link>
+        {admin && <Button type="button" size="sm" variant="outline" onClick={() => supabase.auth.signOut()}>लॉगआउट</Button>}
         <button className="lg:hidden p-2 text-maroon" onClick={() => setOpen(!open)}>
           {open ? <X /> : <span className="text-2xl">☰</span>}
         </button>
@@ -104,6 +126,45 @@ function Header() {
         </div>
       )}
     </header>
+  );
+}
+
+function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const login = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (authError || data.user?.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") {
+      if (data.session) await supabase.auth.signOut();
+      setError("गलत ईमेल या पासवर्ड");
+      setLoading(false);
+      return;
+    }
+    setLoading(false);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm rounded-2xl divine-border">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl text-maroon">एडमिन लॉगिन</DialogTitle>
+          <DialogDescription>फ़ोटो प्रबंधन के लिए प्रवेश करें</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={login} className="space-y-4">
+          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ईमेल" autoComplete="username" required className="w-full px-4 py-3 rounded-xl bg-cream-deep border border-saffron/30 focus:outline-none focus:border-saffron text-maroon" />
+          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="पासवर्ड" autoComplete="current-password" required className="w-full px-4 py-3 rounded-xl bg-cream-deep border border-saffron/30 focus:outline-none focus:border-saffron text-maroon" />
+          {error && <p className="text-sm text-destructive font-medium">{error}</p>}
+          <Button type="submit" disabled={loading} className="w-full rounded-full">{loading ? "लॉगिन हो रहा है..." : "लॉगिन"}</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -180,7 +241,7 @@ function SectionHeader({ children, sub }: { children: React.ReactNode; sub?: str
   );
 }
 
-function About() {
+function About({ admin }: { admin: boolean }) {
   return (
     <section id="about" className="relative py-20 md:py-28">
       <div className="container mx-auto px-4">
@@ -188,7 +249,7 @@ function About() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-br from-saffron/20 to-gold/30 rounded-3xl blur-2xl" />
-            <PhotoUpload />
+            <PhotoUpload admin={admin} />
             <div className="absolute -bottom-6 -right-6 bg-cream divine-border rounded-2xl px-5 py-3 shadow-lg">
               <div className="text-xs text-maroon">शाहपुर घराना</div>
               <div className="font-display text-saffron-deep">परंपरा से जुड़ाव</div>
