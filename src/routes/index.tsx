@@ -421,19 +421,29 @@ function Portfolio({ admin }: { admin: boolean }) {
     }
     setLoading(true);
     let failed = 0;
+    let lastError = "";
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+    if (!user) {
+      setLoading(false);
+      showMessage("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
+      return;
+    }
+    if (user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") {
+      setLoading(false);
+      showMessage(`इस खाते को अनुमति नहीं है: ${user.email ?? "अज्ञात"}`);
+      return;
+    }
     for (const file of toProcess) {
       try {
         const dataUrl = await compressImage(file);
         const blob = await fetch(dataUrl).then((response) => response.blob());
-        const { data: userData } = await supabase.auth.getUser();
-        const user = userData.user;
-        if (!user || user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error("unauthorized");
         const path = `${user.id}/${crypto.randomUUID()}.jpg`;
         const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, {
           contentType: "image/jpeg",
           upsert: false,
         });
-        if (uploadError) throw uploadError;
+        if (uploadError) { lastError = uploadError.message; throw uploadError; }
         const { error: insertError } = await supabase.from("portfolio_photos").insert({
           storage_path: path,
           uploaded_by: user.id,
@@ -441,16 +451,20 @@ function Portfolio({ admin }: { admin: boolean }) {
         });
         if (insertError) {
           await supabase.storage.from("photos").remove([path]);
+          lastError = insertError.message;
           throw insertError;
         }
-      } catch {
+      } catch (e) {
         failed++;
+        if (!lastError && e instanceof Error) lastError = e.message;
       }
     }
-    if (failed < toProcess.length) await loadPhotos().then(setPhotos);
+    await refresh();
     setLoading(false);
     if (failed > 0) {
-      showMessage("यह फ़ोटो अपलोड नहीं हो सकी, दूसरी फ़ोटो चुनें");
+      showMessage(`${failed} फ़ोटो अपलोड नहीं हुई${lastError ? ` — ${lastError}` : ""}`);
+    } else {
+      showMessage("फ़ोटो सफलतापूर्वक क्लाउड पर सहेजी गई");
     }
   };
 
