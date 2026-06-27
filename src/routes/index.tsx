@@ -381,8 +381,21 @@ function Portfolio({ admin }: { admin: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const loadPhotos = useServerFn(getPortfolioPhotos);
 
+  const refresh = async (announce = false) => {
+    try {
+      const fresh = await loadPhotos();
+      // cache-bust each signed URL so newly uploaded photos appear immediately on every device
+      const stamped = fresh.map((p) => ({ ...p, imageUrl: `${p.imageUrl}${p.imageUrl.includes("?") ? "&" : "?"}cb=${Date.now()}` }));
+      setPhotos(stamped);
+      if (announce) showMessage(`सिंक पूरा — ${stamped.length} फ़ोटो सभी डिवाइस पर उपलब्ध हैं`);
+    } catch {
+      setMessage("पोर्टफोलियो अभी लोड नहीं हो सका");
+    }
+  };
+
   useEffect(() => {
-    loadPhotos().then(setPhotos).catch(() => setMessage("पोर्टफोलियो अभी लोड नहीं हो सका"));
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPhotos]);
 
   useEffect(() => {
