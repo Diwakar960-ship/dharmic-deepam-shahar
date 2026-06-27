@@ -567,38 +567,56 @@ function Portfolio({ admin }: { admin: boolean }) {
 function PhotoUpload({ admin }: { admin: boolean }) {
   const [photo, setPhoto] = useState<CloudArtistPhoto | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadArtistPhoto = useServerFn(getArtistPhoto);
 
+  const refresh = async () => {
+    try {
+      const fresh = await loadArtistPhoto();
+      if (fresh) {
+        setPhoto({ ...fresh, imageUrl: `${fresh.imageUrl}${fresh.imageUrl.includes("?") ? "&" : "?"}cb=${Date.now()}` });
+      } else {
+        setPhoto(null);
+      }
+    } catch {
+      setPhoto(null);
+    }
+  };
+
   useEffect(() => {
-    loadArtistPhoto().then(setPhoto).catch(() => setPhoto(null));
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadArtistPhoto]);
 
   const onFile = async (file?: File) => {
     if (!file) return;
     setLoading(true);
+    setError(null);
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-      if (!user || user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error("unauthorized");
+      if (!user) throw new Error("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
+      if (user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error(`इस खाते को अनुमति नहीं है: ${user.email ?? "अज्ञात"}`);
       const dataUrl = await compressImage(file, 1200, 0.82);
       const blob = await fetch(dataUrl).then((response) => response.blob());
       const path = `${user.id}/artist-${crypto.randomUUID()}.jpg`;
       const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
-      if (uploadError) throw uploadError;
+      if (uploadError) throw new Error(uploadError.message);
       const { error: insertError } = await supabase.from("artist_photo").insert({ storage_path: path, uploaded_by: user.id });
       if (insertError) {
         await supabase.storage.from("photos").remove([path]);
-        throw insertError;
+        throw new Error(insertError.message);
       }
       const previous = photo;
       if (previous) {
         await supabase.from("artist_photo").delete().eq("id", previous.id);
-        await supabase.storage.from("photos").remove([previous.storagePath]);
+        const cleanPath = previous.storagePath;
+        await supabase.storage.from("photos").remove([cleanPath]);
       }
-      await loadArtistPhoto().then(setPhoto);
-    } catch {
-      // Keep the current image visible if the replacement could not be saved.
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "फ़ोटो अपलोड नहीं हो सकी");
     } finally {
       setLoading(false);
     }
