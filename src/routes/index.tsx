@@ -656,6 +656,11 @@ function PhotoUpload({ admin }: { admin: boolean }) {
            <Camera size={48} className="text-saffron-deep/60" />
          </div>
       )}
+      {error && admin && (
+        <div className="absolute top-3 left-3 right-3 text-xs text-cream bg-deep-maroon/90 rounded-lg px-3 py-2">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
