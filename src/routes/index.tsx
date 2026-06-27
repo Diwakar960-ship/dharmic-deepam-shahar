@@ -505,6 +505,9 @@ function Portfolio({ admin }: { admin: boolean }) {
               <div className="text-sm text-deep-maroon/80 font-medium">{photos.length}/{MAX_PHOTOS} फ़ोटो</div>
             </>
            ) : null}
+          <Button type="button" variant="outline" onClick={() => refresh(true)} className="rounded-full text-xs">
+            🔄 फ़ोटो सिंक जाँचें
+          </Button>
           {message && (
             <div className="text-sm text-saffron-deep bg-saffron/10 border border-saffron/40 rounded-full px-4 py-1">
               {message}
