@@ -164,7 +164,7 @@ function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm rounded-2xl divine-border">
+      <DialogContent className="max-w-sm rounded-2xl border-2 border-saffron/60 bg-cream">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl text-maroon">एडमिन लॉगिन</DialogTitle>
           <DialogDescription>फ़ोटो प्रबंधन के लिए प्रवेश करें</DialogDescription>
