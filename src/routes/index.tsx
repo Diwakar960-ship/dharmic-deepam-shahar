@@ -73,27 +73,29 @@ interface Review {
 function Home() {
   const [admin, setAdmin] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      const isAdmin = data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com";
-      if (isAdmin && sessionStorage.getItem("portfolio_admin_session") !== "active") {
-        await supabase.auth.signOut();
-        setAdmin(false);
-        return;
-      }
-      setAdmin(isAdmin);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
-    });
-    return () => data.subscription.unsubscribe();
+    setAdmin(readAdminSession() !== null);
   }, []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  };
 
   return (
     <div className="relative overflow-x-hidden">
       <FloatingPetals />
-      <Header admin={admin} onAdminLogin={() => setLoginOpen(true)} />
+      <Header
+        admin={admin}
+        onAdminLogin={() => setLoginOpen(true)}
+        onLogout={() => {
+          clearAdminSession();
+          setAdmin(false);
+          showToast("लॉगआउट हो गया");
+        }}
+      />
       <Hero />
       <About admin={admin} />
       <Services />
@@ -102,10 +104,23 @@ function Home() {
       <Reviews />
       <Contact />
       <Footer />
-      <AdminLoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+      <AdminLoginDialog
+        open={loginOpen}
+        onOpenChange={setLoginOpen}
+        onSuccess={() => {
+          setAdmin(true);
+          showToast("एडमिन लॉगिन सफल!");
+        }}
+      />
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-saffron-deep text-cream px-5 py-3 rounded-full shadow-xl font-medium">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
+
 
 function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => void }) {
   const [open, setOpen] = useState(false);
