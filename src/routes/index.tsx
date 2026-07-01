@@ -122,7 +122,7 @@ function Home() {
 }
 
 
-function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => void }) {
+function Header({ admin, onAdminLogin, onLogout }: { admin: boolean; onAdminLogin: () => void; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
   const logoClicks = useRef<number[]>([]);
   const links = [
@@ -160,10 +160,7 @@ function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => v
         <Link to="/booking" className="hidden md:inline-flex btn-divine text-sm">
           <Sparkles size={16} /> अभी बुक करें
         </Link>
-        {admin && <Button type="button" size="sm" variant="outline" onClick={() => {
-          sessionStorage.removeItem("portfolio_admin_session");
-          supabase.auth.signOut();
-        }}>लॉगआउट</Button>}
+        {admin && <Button type="button" size="sm" variant="outline" onClick={onLogout}>लॉगआउट</Button>}
         <button className="lg:hidden p-2 text-maroon" onClick={() => setOpen(!open)}>
           {open ? <X /> : <span className="text-2xl">☰</span>}
         </button>
@@ -182,26 +179,29 @@ function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => v
   );
 }
 
-function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+function AdminLoginDialog({ open, onOpenChange, onSuccess }: { open: boolean; onOpenChange: (open: boolean) => void; onSuccess: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const verify = useServerFn(verifyAdmin);
 
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError("");
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (authError || data.user?.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") {
-      if (data.session) await supabase.auth.signOut();
-      setError("गलत ईमेल या पासवर्ड");
+    try {
+      await verify({ data: { email: email.trim(), password } });
+      writeAdminSession(password);
       setLoading(false);
-      return;
+      setEmail("");
+      setPassword("");
+      onOpenChange(false);
+      onSuccess();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "गलत ईमेल या पासवर्ड");
+      setLoading(false);
     }
-    sessionStorage.setItem("portfolio_admin_session", "active");
-    setLoading(false);
-    onOpenChange(false);
   };
 
   return (
@@ -221,6 +221,7 @@ function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     </Dialog>
   );
 }
+
 
 function Hero() {
   return (
