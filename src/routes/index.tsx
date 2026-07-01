@@ -7,7 +7,34 @@ import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
 import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
 import { getArtistPhoto, getPortfolioPhotos, type CloudArtistPhoto, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { verifyAdmin, adminUploadPortfolio, adminDeletePortfolio, adminUploadArtist } from "@/lib/admin.functions";
+
+const ADMIN_STORAGE_KEY = "dp_admin_session_v3";
+const ADMIN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function readAdminSession(): { password: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ADMIN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { password: string; expiresAt: number };
+    if (!parsed.password || !parsed.expiresAt || parsed.expiresAt < Date.now()) {
+      localStorage.removeItem(ADMIN_STORAGE_KEY);
+      return null;
+    }
+    return { password: parsed.password };
+  } catch {
+    return null;
+  }
+}
+
+function writeAdminSession(password: string) {
+  localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify({ password, expiresAt: Date.now() + ADMIN_TTL_MS }));
+}
+
+function clearAdminSession() {
+  localStorage.removeItem(ADMIN_STORAGE_KEY);
+}
 import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -46,27 +73,29 @@ interface Review {
 function Home() {
   const [admin, setAdmin] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      const isAdmin = data.user?.email?.toLowerCase() === "diwakarpandey6611@gmail.com";
-      if (isAdmin && sessionStorage.getItem("portfolio_admin_session") !== "active") {
-        await supabase.auth.signOut();
-        setAdmin(false);
-        return;
-      }
-      setAdmin(isAdmin);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAdmin(session?.user.email?.toLowerCase() === "diwakarpandey6611@gmail.com");
-    });
-    return () => data.subscription.unsubscribe();
+    setAdmin(readAdminSession() !== null);
   }, []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  };
 
   return (
     <div className="relative overflow-x-hidden">
       <FloatingPetals />
-      <Header admin={admin} onAdminLogin={() => setLoginOpen(true)} />
+      <Header
+        admin={admin}
+        onAdminLogin={() => setLoginOpen(true)}
+        onLogout={() => {
+          clearAdminSession();
+          setAdmin(false);
+          showToast("लॉगआउट हो गया");
+        }}
+      />
       <Hero />
       <About admin={admin} />
       <Services />
@@ -75,12 +104,25 @@ function Home() {
       <Reviews />
       <Contact />
       <Footer />
-      <AdminLoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
+      <AdminLoginDialog
+        open={loginOpen}
+        onOpenChange={setLoginOpen}
+        onSuccess={() => {
+          setAdmin(true);
+          showToast("एडमिन लॉगिन सफल!");
+        }}
+      />
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-saffron-deep text-cream px-5 py-3 rounded-full shadow-xl font-medium">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
 
-function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => void }) {
+
+function Header({ admin, onAdminLogin, onLogout }: { admin: boolean; onAdminLogin: () => void; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
   const logoClicks = useRef<number[]>([]);
   const links = [
@@ -118,10 +160,7 @@ function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => v
         <Link to="/booking" className="hidden md:inline-flex btn-divine text-sm">
           <Sparkles size={16} /> अभी बुक करें
         </Link>
-        {admin && <Button type="button" size="sm" variant="outline" onClick={() => {
-          sessionStorage.removeItem("portfolio_admin_session");
-          supabase.auth.signOut();
-        }}>लॉगआउट</Button>}
+        {admin && <Button type="button" size="sm" variant="outline" onClick={onLogout}>लॉगआउट</Button>}
         <button className="lg:hidden p-2 text-maroon" onClick={() => setOpen(!open)}>
           {open ? <X /> : <span className="text-2xl">☰</span>}
         </button>
@@ -140,26 +179,29 @@ function Header({ admin, onAdminLogin }: { admin: boolean; onAdminLogin: () => v
   );
 }
 
-function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+function AdminLoginDialog({ open, onOpenChange, onSuccess }: { open: boolean; onOpenChange: (open: boolean) => void; onSuccess: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const verify = useServerFn(verifyAdmin);
 
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError("");
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (authError || data.user?.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") {
-      if (data.session) await supabase.auth.signOut();
-      setError("गलत ईमेल या पासवर्ड");
+    try {
+      await verify({ data: { email: email.trim(), password } });
+      writeAdminSession(password);
       setLoading(false);
-      return;
+      setEmail("");
+      setPassword("");
+      onOpenChange(false);
+      onSuccess();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "गलत ईमेल या पासवर्ड");
+      setLoading(false);
     }
-    sessionStorage.setItem("portfolio_admin_session", "active");
-    setLoading(false);
-    onOpenChange(false);
   };
 
   return (
@@ -179,6 +221,7 @@ function AdminLoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     </Dialog>
   );
 }
+
 
 function Hero() {
   return (
@@ -398,9 +441,8 @@ function Portfolio({ admin }: { admin: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPhotos]);
 
-  useEffect(() => {
-    if (admin) showMessage("सुपाबेस से कनेक्ट हो गया — कृपया फ़ोटो दोबारा अपलोड करें");
-  }, [admin]);
+  const uploadFn = useServerFn(adminUploadPortfolio);
+  const deleteFn = useServerFn(adminDeletePortfolio);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
@@ -409,6 +451,11 @@ function Portfolio({ admin }: { admin: boolean }) {
 
   const handleFiles = async (files: FileList | null) => {
     if (!admin || !files || files.length === 0) return;
+    const session = readAdminSession();
+    if (!session) {
+      showMessage("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
+      return;
+    }
     const current = photos.length;
     const remaining = MAX_PHOTOS - current;
     if (remaining <= 0) {
@@ -422,38 +469,10 @@ function Portfolio({ admin }: { admin: boolean }) {
     setLoading(true);
     let failed = 0;
     let lastError = "";
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) {
-      setLoading(false);
-      showMessage("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
-      return;
-    }
-    if (user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") {
-      setLoading(false);
-      showMessage(`इस खाते को अनुमति नहीं है: ${user.email ?? "अज्ञात"}`);
-      return;
-    }
     for (const file of toProcess) {
       try {
         const dataUrl = await compressImage(file);
-        const blob = await fetch(dataUrl).then((response) => response.blob());
-        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-        const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, {
-          contentType: "image/jpeg",
-          upsert: false,
-        });
-        if (uploadError) { lastError = uploadError.message; throw uploadError; }
-        const { error: insertError } = await supabase.from("portfolio_photos").insert({
-          storage_path: path,
-          uploaded_by: user.id,
-          sort_order: Date.now(),
-        });
-        if (insertError) {
-          await supabase.storage.from("photos").remove([path]);
-          lastError = insertError.message;
-          throw insertError;
-        }
+        await uploadFn({ data: { password: session.password, dataUrl } });
       } catch (e) {
         failed++;
         if (!lastError && e instanceof Error) lastError = e.message;
@@ -469,16 +488,16 @@ function Portfolio({ admin }: { admin: boolean }) {
   };
 
   const remove = async (photo: CloudPortfolioPhoto) => {
+    const session = readAdminSession();
+    if (!session) { showMessage("एडमिन लॉगिन समाप्त हो गया"); return; }
     try {
-      const { error: storageError } = await supabase.storage.from("photos").remove([photo.storagePath]);
-      if (storageError) throw storageError;
-      const { error: rowError } = await supabase.from("portfolio_photos").delete().eq("id", photo.id);
-      if (rowError) throw rowError;
+      await deleteFn({ data: { password: session.password, id: photo.id, storagePath: photo.storagePath } });
       setPhotos((prev) => prev.filter((item) => item.id !== photo.id));
-    } catch {
-      showMessage("फ़ोटो हटाई नहीं जा सकी, कृपया फिर प्रयास करें");
+    } catch (e) {
+      showMessage(e instanceof Error ? e.message : "फ़ोटो हटाई नहीं जा सकी");
     }
   };
+
 
   return (
     <section id="portfolio" className="relative py-20 md:py-28 bg-gradient-to-b from-cream-deep to-cream">
@@ -570,6 +589,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadArtistPhoto = useServerFn(getArtistPhoto);
+  const uploadArtist = useServerFn(adminUploadArtist);
 
   const refresh = async () => {
     try {
@@ -594,26 +614,10 @@ function PhotoUpload({ admin }: { admin: boolean }) {
     setLoading(true);
     setError(null);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
-      if (!user) throw new Error("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
-      if (user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error(`इस खाते को अनुमति नहीं है: ${user.email ?? "अज्ञात"}`);
+      const session = readAdminSession();
+      if (!session) throw new Error("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
       const dataUrl = await compressImage(file, 1200, 0.82);
-      const blob = await fetch(dataUrl).then((response) => response.blob());
-      const path = `${user.id}/artist-${crypto.randomUUID()}.jpg`;
-      const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
-      if (uploadError) throw new Error(uploadError.message);
-      const { error: insertError } = await supabase.from("artist_photo").insert({ storage_path: path, uploaded_by: user.id });
-      if (insertError) {
-        await supabase.storage.from("photos").remove([path]);
-        throw new Error(insertError.message);
-      }
-      const previous = photo;
-      if (previous) {
-        await supabase.from("artist_photo").delete().eq("id", previous.id);
-        const cleanPath = previous.storagePath;
-        await supabase.storage.from("photos").remove([cleanPath]);
-      }
+      await uploadArtist({ data: { password: session.password, dataUrl } });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "फ़ोटो अपलोड नहीं हो सकी");
@@ -621,6 +625,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="relative divine-border rounded-2xl md:rounded-3xl overflow-hidden bg-cream-deep w-full">
