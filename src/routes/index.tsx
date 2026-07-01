@@ -589,6 +589,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadArtistPhoto = useServerFn(getArtistPhoto);
+  const uploadArtist = useServerFn(adminUploadArtist);
 
   const refresh = async () => {
     try {
@@ -613,26 +614,10 @@ function PhotoUpload({ admin }: { admin: boolean }) {
     setLoading(true);
     setError(null);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
-      if (!user) throw new Error("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
-      if (user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") throw new Error(`इस खाते को अनुमति नहीं है: ${user.email ?? "अज्ञात"}`);
+      const session = readAdminSession();
+      if (!session) throw new Error("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
       const dataUrl = await compressImage(file, 1200, 0.82);
-      const blob = await fetch(dataUrl).then((response) => response.blob());
-      const path = `${user.id}/artist-${crypto.randomUUID()}.jpg`;
-      const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
-      if (uploadError) throw new Error(uploadError.message);
-      const { error: insertError } = await supabase.from("artist_photo").insert({ storage_path: path, uploaded_by: user.id });
-      if (insertError) {
-        await supabase.storage.from("photos").remove([path]);
-        throw new Error(insertError.message);
-      }
-      const previous = photo;
-      if (previous) {
-        await supabase.from("artist_photo").delete().eq("id", previous.id);
-        const cleanPath = previous.storagePath;
-        await supabase.storage.from("photos").remove([cleanPath]);
-      }
+      await uploadArtist({ data: { password: session.password, dataUrl } });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "फ़ोटो अपलोड नहीं हो सकी");
@@ -640,6 +625,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="relative divine-border rounded-2xl md:rounded-3xl overflow-hidden bg-cream-deep w-full">
