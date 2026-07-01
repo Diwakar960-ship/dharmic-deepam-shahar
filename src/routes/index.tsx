@@ -7,7 +7,34 @@ import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
 import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
 import { getArtistPhoto, getPortfolioPhotos, type CloudArtistPhoto, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { verifyAdmin, adminUploadPortfolio, adminDeletePortfolio, adminUploadArtist } from "@/lib/admin.functions";
+
+const ADMIN_STORAGE_KEY = "dp_admin_session_v3";
+const ADMIN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function readAdminSession(): { password: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ADMIN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { password: string; expiresAt: number };
+    if (!parsed.password || !parsed.expiresAt || parsed.expiresAt < Date.now()) {
+      localStorage.removeItem(ADMIN_STORAGE_KEY);
+      return null;
+    }
+    return { password: parsed.password };
+  } catch {
+    return null;
+  }
+}
+
+function writeAdminSession(password: string) {
+  localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify({ password, expiresAt: Date.now() + ADMIN_TTL_MS }));
+}
+
+function clearAdminSession() {
+  localStorage.removeItem(ADMIN_STORAGE_KEY);
+}
 import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Users, Sparkles, Camera, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
