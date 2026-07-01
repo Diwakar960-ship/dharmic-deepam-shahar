@@ -441,9 +441,8 @@ function Portfolio({ admin }: { admin: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPhotos]);
 
-  useEffect(() => {
-    if (admin) showMessage("सुपाबेस से कनेक्ट हो गया — कृपया फ़ोटो दोबारा अपलोड करें");
-  }, [admin]);
+  const uploadFn = useServerFn(adminUploadPortfolio);
+  const deleteFn = useServerFn(adminDeletePortfolio);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
@@ -452,6 +451,11 @@ function Portfolio({ admin }: { admin: boolean }) {
 
   const handleFiles = async (files: FileList | null) => {
     if (!admin || !files || files.length === 0) return;
+    const session = readAdminSession();
+    if (!session) {
+      showMessage("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
+      return;
+    }
     const current = photos.length;
     const remaining = MAX_PHOTOS - current;
     if (remaining <= 0) {
@@ -465,38 +469,10 @@ function Portfolio({ admin }: { admin: boolean }) {
     setLoading(true);
     let failed = 0;
     let lastError = "";
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) {
-      setLoading(false);
-      showMessage("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
-      return;
-    }
-    if (user.email?.toLowerCase() !== "diwakarpandey6611@gmail.com") {
-      setLoading(false);
-      showMessage(`इस खाते को अनुमति नहीं है: ${user.email ?? "अज्ञात"}`);
-      return;
-    }
     for (const file of toProcess) {
       try {
         const dataUrl = await compressImage(file);
-        const blob = await fetch(dataUrl).then((response) => response.blob());
-        const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-        const { error: uploadError } = await supabase.storage.from("photos").upload(path, blob, {
-          contentType: "image/jpeg",
-          upsert: false,
-        });
-        if (uploadError) { lastError = uploadError.message; throw uploadError; }
-        const { error: insertError } = await supabase.from("portfolio_photos").insert({
-          storage_path: path,
-          uploaded_by: user.id,
-          sort_order: Date.now(),
-        });
-        if (insertError) {
-          await supabase.storage.from("photos").remove([path]);
-          lastError = insertError.message;
-          throw insertError;
-        }
+        await uploadFn({ data: { password: session.password, dataUrl } });
       } catch (e) {
         failed++;
         if (!lastError && e instanceof Error) lastError = e.message;
@@ -512,16 +488,16 @@ function Portfolio({ admin }: { admin: boolean }) {
   };
 
   const remove = async (photo: CloudPortfolioPhoto) => {
+    const session = readAdminSession();
+    if (!session) { showMessage("एडमिन लॉगिन समाप्त हो गया"); return; }
     try {
-      const { error: storageError } = await supabase.storage.from("photos").remove([photo.storagePath]);
-      if (storageError) throw storageError;
-      const { error: rowError } = await supabase.from("portfolio_photos").delete().eq("id", photo.id);
-      if (rowError) throw rowError;
+      await deleteFn({ data: { password: session.password, id: photo.id, storagePath: photo.storagePath } });
       setPhotos((prev) => prev.filter((item) => item.id !== photo.id));
-    } catch {
-      showMessage("फ़ोटो हटाई नहीं जा सकी, कृपया फिर प्रयास करें");
+    } catch (e) {
+      showMessage(e instanceof Error ? e.message : "फ़ोटो हटाई नहीं जा सकी");
     }
   };
+
 
   return (
     <section id="portfolio" className="relative py-20 md:py-28 bg-gradient-to-b from-cream-deep to-cream">
