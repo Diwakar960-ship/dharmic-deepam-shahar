@@ -45,7 +45,7 @@ export const adminUploadPortfolio = createServerFn({ method: "POST" })
     const { error: insErr } = await supabaseAdmin.from("portfolio_photos").insert({
       storage_path: path,
       uploaded_by: ADMIN_UUID,
-      sort_order: Date.now(),
+      sort_order: Math.floor(Date.now() / 1000),
     });
     if (insErr) {
       await supabaseAdmin.storage.from("photos").remove([path]);
