@@ -12,10 +12,20 @@ export const Route = createFileRoute("/booking")({
   validateSearch: (s) => search.parse(s),
   head: () => ({
     meta: [
-      { title: "बुकिंग फॉर्म — धीरज पांडेय" },
-      { name: "description", content: "अपने कार्यक्रम के लिए धीरज पांडेय जी की बुकिंग करें।" },
+      { title: "बुकिंग करें — धीरज पांडेय | शाहपुर घराना भजन गायक" },
+      { name: "description", content: "धीरज पांडेय जी (शाहपुर घराना) की बुकिंग करें — भजन संध्या, सुंदरकांड, जागरण, अखंड रामायण। बिहार के सभी जिलों में उपलब्ध। संपर्क: 8539976521" },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "बुकिंग करें — धीरज पांडेय | शाहपुर घराना" },
+      { property: "og:description", content: "भजन संध्या, सुंदरकांड, जागरण एवं अखंड रामायण की बुकिंग। बिहार के सभी जिलों में उपलब्ध।" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://shahpurgharana.lovable.app/booking" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "बुकिंग करें — धीरज पांडेय" },
+      { name: "twitter:description", content: "भजन, सुंदरकांड, जागरण बुकिंग: 8539976521" },
     ],
+    links: [{ rel: "canonical", href: "https://shahpurgharana.lovable.app/booking" }],
   }),
+
   component: BookingPage,
 });
 
