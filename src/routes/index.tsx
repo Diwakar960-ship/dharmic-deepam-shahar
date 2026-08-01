@@ -39,6 +39,10 @@ import { Star, MapPin, Phone, Facebook, Youtube, MessageCircle, X, Calendar, Use
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const OG_IMAGE =
+  "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/87697a7b-c409-422b-a529-6560b9e0cd5a/id-preview-d32d5743--2d361609-de0e-4b9a-afb2-2f92da2699ff.lovable.app-1780045006915.png";
+
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
