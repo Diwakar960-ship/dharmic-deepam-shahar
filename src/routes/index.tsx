@@ -294,11 +294,14 @@ function Hero() {
     <section id="home" className="relative min-h-[92vh] flex items-center justify-center overflow-hidden">
       <img
         src={heroImg}
-        alt="दिव्य दीप और कमल"
+        alt="Dheeraj Pandey bhajan singer Bihar — दिव्य दीप और कमल की पृष्ठभूमि"
         className="absolute inset-0 w-full h-full object-cover"
         width={1920}
         height={1080}
+        fetchPriority="high"
+        decoding="async"
       />
+
       <div className="absolute inset-0 bg-gradient-to-b from-cream/30 via-cream/40 to-cream/85" />
       <div className="absolute inset-0 mandala-bg opacity-50" />
 
@@ -318,13 +321,14 @@ function Hero() {
         </div>
         <h1
           className="text-gradient-divine font-display"
-          style={{ fontSize: "clamp(2.8rem, 8vw, 6rem)", lineHeight: 1.1 }}
+          style={{ fontSize: "clamp(2.2rem, 6.5vw, 5rem)", lineHeight: 1.15 }}
         >
-          धीरज पांडेय
+          धीरज पांडेय — शाहपुर घराना
         </h1>
         <p className="mt-4 text-xl md:text-2xl text-maroon font-display">
-          भक्ति की आवाज़ — शाहपुर घराना
+          भक्ति की आवाज़
         </p>
+
         <p className="mt-3 text-base md:text-lg text-deep-maroon/80 max-w-2xl mx-auto">
           पटना, बिहार से दिव्य भजन, सुंदरकांड एवं समस्त धार्मिक आयोजन की सेवा
         </p>
