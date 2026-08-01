@@ -57,8 +57,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:title", content: "धीरज पांडेय — शाहपुर घराना | भक्ति संगीत, पटना बिहार" },
       { name: "twitter:description", content: "धीरज पांडेय - शाहपुर घराना के प्रसिद्ध भजन गायक। भजन संध्या, सुंदरकांड, जागरण, अखंड रामायण, तिलक महोत्सव। पटना, बिहार के सभी जिलों में बुकिंग उपलब्ध।" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/87697a7b-c409-422b-a529-6560b9e0cd5a/id-preview-d32d5743--2d361609-de0e-4b9a-afb2-2f92da2699ff.lovable.app-1780045006915.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/87697a7b-c409-422b-a529-6560b9e0cd5a/id-preview-d32d5743--2d361609-de0e-4b9a-afb2-2f92da2699ff.lovable.app-1780045006915.png" },
+      { property: "og:locale", content: "hi_IN" },
+      { property: "og:site_name", content: "शाहपुर घराना" },
+
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
