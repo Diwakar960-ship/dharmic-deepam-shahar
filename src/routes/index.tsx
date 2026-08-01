@@ -62,8 +62,14 @@ export const Route = createFileRoute("/")({
       { name: "twitter:title", content: "शाहपुर घराना — धीरज पांडेय" },
       { name: "twitter:description", content: "बिहार के प्रसिद्ध भजन गायक। बुकिंग: 8539976521" },
       { name: "twitter:image", content: OG_IMAGE },
+      // Google Search Console: paste the verification code between the quotes below
+      { name: "google-site-verification", content: "" },
     ],
-    links: [{ rel: "canonical", href: "https://shahpurgharana.lovable.app" }],
+    links: [
+      { rel: "canonical", href: "https://shahpurgharana.lovable.app" },
+      { rel: "preload", as: "image", href: heroImg, fetchpriority: "high" },
+    ],
+
     scripts: [
       {
         type: "application/ld+json",
@@ -294,11 +300,14 @@ function Hero() {
     <section id="home" className="relative min-h-[92vh] flex items-center justify-center overflow-hidden">
       <img
         src={heroImg}
-        alt="दिव्य दीप और कमल"
+        alt="Dheeraj Pandey bhajan singer Bihar — दिव्य दीप और कमल की पृष्ठभूमि"
         className="absolute inset-0 w-full h-full object-cover"
         width={1920}
         height={1080}
+        fetchPriority="high"
+        decoding="async"
       />
+
       <div className="absolute inset-0 bg-gradient-to-b from-cream/30 via-cream/40 to-cream/85" />
       <div className="absolute inset-0 mandala-bg opacity-50" />
 
@@ -318,13 +327,14 @@ function Hero() {
         </div>
         <h1
           className="text-gradient-divine font-display"
-          style={{ fontSize: "clamp(2.8rem, 8vw, 6rem)", lineHeight: 1.1 }}
+          style={{ fontSize: "clamp(2.2rem, 6.5vw, 5rem)", lineHeight: 1.15 }}
         >
-          धीरज पांडेय
+          धीरज पांडेय — शाहपुर घराना
         </h1>
         <p className="mt-4 text-xl md:text-2xl text-maroon font-display">
-          भक्ति की आवाज़ — शाहपुर घराना
+          भक्ति की आवाज़
         </p>
+
         <p className="mt-3 text-base md:text-lg text-deep-maroon/80 max-w-2xl mx-auto">
           पटना, बिहार से दिव्य भजन, सुंदरकांड एवं समस्त धार्मिक आयोजन की सेवा
         </p>
@@ -620,9 +630,10 @@ function Portfolio({ admin }: { admin: boolean }) {
                 >
                   <img
                     src={p.imageUrl}
-                    alt={`कार्यक्रम ${i + 1}`}
+                    alt={`Dheeraj Pandey bhajan singer Bihar — कार्यक्रम फ़ोटो ${i + 1}`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     loading="lazy"
+                    decoding="async"
                   />
                 </button>
                 {admin && (
@@ -642,7 +653,7 @@ function Portfolio({ admin }: { admin: boolean }) {
           onClick={() => setLightbox(null)}
         >
           <button className="absolute top-6 right-6 text-cream p-2"><X size={28} /></button>
-          <img src={lightbox} alt="विस्तार" className="max-w-full max-h-[90vh] rounded-2xl divine-border" />
+          <img src={lightbox} alt="Dheeraj Pandey bhajan singer Bihar — कार्यक्रम की फ़ोटो" className="max-w-full max-h-[90vh] rounded-2xl divine-border" />
         </div>
       )}
     </section>
@@ -709,7 +720,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
         <>
           <img
              src={photo.imageUrl}
-            alt="धीरज पांडेय"
+            alt="Dheeraj Pandey bhajan singer Bihar — धीरज पांडेय, शाहपुर घराना"
             className="w-full h-auto max-w-full object-contain"
           />
            {admin && <Button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full">
