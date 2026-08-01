@@ -9,17 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as BookingRouteImport } from './routes/booking'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BookingRouteImport } from './routes/booking'
 
-const BookingRoute = BookingRouteImport.update({
-  id: '/booking',
-  path: '/booking',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingRoute = BookingRouteImport.update({
+  id: '/booking',
+  path: '/booking',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -51,18 +51,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/booking': {
-      id: '/booking'
-      path: '/booking'
-      fullPath: '/booking'
-      preLoaderRoute: typeof BookingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking': {
+      id: '/booking'
+      path: '/booking'
+      fullPath: '/booking'
+      preLoaderRoute: typeof BookingRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
