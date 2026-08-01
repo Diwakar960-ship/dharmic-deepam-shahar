@@ -71,23 +71,47 @@ export const Route = createFileRoute("/")({
           "@context": "https://schema.org",
           "@type": "MusicGroup",
           name: "शाहपुर घराना — धीरज पांडेय",
-          alternateName: ["Shahpur Gharana", "Dheeraj Pandey"],
+          alternateName: "Shahpur Gharana",
+          description:
+            "बिहार के प्रसिद्ध भजन गायक धीरज पांडेय जी शाहपुर घराने से। 10+ वर्षों का अनुभव, 1000+ कार्यक्रम।",
           url: "https://shahpurgharana.lovable.app",
           image: OG_IMAGE,
-          genre: ["Bhajan", "Devotional Music", "Nirgun Sangeet"],
-          description:
-            "बिहार के प्रसिद्ध भजन गायक धीरज पांडेय — भजन संध्या, सुंदरकांड, जागरण, अखंड रामायण, तिलक महोत्सव।",
-          telephone: "+91-8539976521",
+          telephone: "+918539976521",
           address: {
             "@type": "PostalAddress",
             addressLocality: "Patna",
             addressRegion: "Bihar",
             addressCountry: "IN",
           },
-          areaServed: "Bihar, India",
+          sameAs: [
+            "https://www.facebook.com/share/1DKJzQgeug/",
+            "https://youtube.com/@pinkupremi1354",
+          ],
+          genre: ["Bhajan", "Devotional", "Religious Music"],
+          foundingLocation: "Shahpur, Bihar, India",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          name: "शाहपुर घराना भजन सेवा",
+          description: "भजन संध्या, सुंदरकांड, जागरण, अखंड रामायण बुकिंग सेवा",
+          telephone: "+918539976521",
+          areaServed: "Bihar",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: "Patna",
+            addressRegion: "Bihar",
+            addressCountry: "IN",
+          },
+          priceRange: "₹20000 - ₹50000",
+          openingHours: "Mo-Su 09:00-21:00",
         }),
       },
     ],
+
   }),
 
   component: Home,
