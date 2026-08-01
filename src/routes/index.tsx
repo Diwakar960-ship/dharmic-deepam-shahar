@@ -62,8 +62,14 @@ export const Route = createFileRoute("/")({
       { name: "twitter:title", content: "शाहपुर घराना — धीरज पांडेय" },
       { name: "twitter:description", content: "बिहार के प्रसिद्ध भजन गायक। बुकिंग: 8539976521" },
       { name: "twitter:image", content: OG_IMAGE },
+      // Google Search Console: paste the verification code between the quotes below
+      { name: "google-site-verification", content: "" },
     ],
-    links: [{ rel: "canonical", href: "https://shahpurgharana.lovable.app" }],
+    links: [
+      { rel: "canonical", href: "https://shahpurgharana.lovable.app" },
+      { rel: "preload", as: "image", href: heroImg, fetchpriority: "high" },
+    ],
+
     scripts: [
       {
         type: "application/ld+json",
