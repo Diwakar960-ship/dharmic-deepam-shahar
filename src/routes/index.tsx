@@ -624,9 +624,10 @@ function Portfolio({ admin }: { admin: boolean }) {
                 >
                   <img
                     src={p.imageUrl}
-                    alt={`कार्यक्रम ${i + 1}`}
+                    alt={`Dheeraj Pandey bhajan singer Bihar — कार्यक्रम फ़ोटो ${i + 1}`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     loading="lazy"
+                    decoding="async"
                   />
                 </button>
                 {admin && (
@@ -646,7 +647,7 @@ function Portfolio({ admin }: { admin: boolean }) {
           onClick={() => setLightbox(null)}
         >
           <button className="absolute top-6 right-6 text-cream p-2"><X size={28} /></button>
-          <img src={lightbox} alt="विस्तार" className="max-w-full max-h-[90vh] rounded-2xl divine-border" />
+          <img src={lightbox} alt="Dheeraj Pandey bhajan singer Bihar — कार्यक्रम की फ़ोटो" className="max-w-full max-h-[90vh] rounded-2xl divine-border" />
         </div>
       )}
     </section>
@@ -713,7 +714,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
         <>
           <img
              src={photo.imageUrl}
-            alt="धीरज पांडेय"
+            alt="Dheeraj Pandey bhajan singer Bihar — धीरज पांडेय, शाहपुर घराना"
             className="w-full h-auto max-w-full object-contain"
           />
            {admin && <Button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full">
