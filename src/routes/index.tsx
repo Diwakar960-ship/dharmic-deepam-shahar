@@ -1,13 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import heroImg from "@/assets/hero-divine.jpg";
 import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
 import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
-import { getArtistPhoto, getPortfolioPhotos, type CloudArtistPhoto, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
-import { adminUploadPortfolio, adminDeletePortfolio, adminUploadArtist } from "@/lib/admin.functions";
+import {
+  fetchPortfolioPhotos,
+  uploadPortfolioPhoto,
+  deletePortfolioPhoto,
+  fetchArtistPhoto,
+  uploadArtistPhoto,
+  type CloudArtistPhoto,
+  type CloudPortfolioPhoto,
+} from "@/lib/photo-store";
+
 
 const ADMIN_STORAGE_KEY = "dp_admin_session_v3";
 const ADMIN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
