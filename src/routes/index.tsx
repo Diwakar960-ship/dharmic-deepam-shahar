@@ -578,7 +578,7 @@ function Portfolio({ admin }: { admin: boolean }) {
     const session = readAdminSession();
     if (!session) { showMessage("एडमिन लॉगिन समाप्त हो गया"); return; }
     try {
-      await deleteFn({ data: { password: session.password, id: photo.id, storagePath: photo.storagePath } });
+      await deletePortfolioPhoto(photo.id, photo.storagePath);
       setPhotos((prev) => prev.filter((item) => item.id !== photo.id));
     } catch (e) {
       showMessage(e instanceof Error ? e.message : "फ़ोटो हटाई नहीं जा सकी");
