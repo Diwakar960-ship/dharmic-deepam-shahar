@@ -512,11 +512,10 @@ function Portfolio({ admin }: { admin: boolean }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadPhotos = useServerFn(getPortfolioPhotos);
 
   const refresh = async (announce = false) => {
     try {
-      const fresh = await loadPhotos();
+      const fresh = await fetchPortfolioPhotos();
       // cache-bust each signed URL so newly uploaded photos appear immediately on every device
       const stamped = fresh.map((p) => ({ ...p, imageUrl: `${p.imageUrl}${p.imageUrl.includes("?") ? "&" : "?"}cb=${Date.now()}` }));
       setPhotos(stamped);
@@ -529,10 +528,8 @@ function Portfolio({ admin }: { admin: boolean }) {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadPhotos]);
+  }, []);
 
-  const uploadFn = useServerFn(adminUploadPortfolio);
-  const deleteFn = useServerFn(adminDeletePortfolio);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
