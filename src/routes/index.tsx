@@ -1,13 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import heroImg from "@/assets/hero-divine.jpg";
 import { Diya, Lotus, Om } from "@/components/Diya";
 import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
 import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
-import { getArtistPhoto, getPortfolioPhotos, type CloudArtistPhoto, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
-import { adminUploadPortfolio, adminDeletePortfolio, adminUploadArtist } from "@/lib/admin.functions";
+import {
+  fetchPortfolioPhotos,
+  uploadPortfolioPhoto,
+  deletePortfolioPhoto,
+  fetchArtistPhoto,
+  uploadArtistPhoto,
+  type CloudArtistPhoto,
+  type CloudPortfolioPhoto,
+} from "@/lib/photo-store";
+
 
 const ADMIN_STORAGE_KEY = "dp_admin_session_v3";
 const ADMIN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -505,11 +512,10 @@ function Portfolio({ admin }: { admin: boolean }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadPhotos = useServerFn(getPortfolioPhotos);
 
   const refresh = async (announce = false) => {
     try {
-      const fresh = await loadPhotos();
+      const fresh = await fetchPortfolioPhotos();
       // cache-bust each signed URL so newly uploaded photos appear immediately on every device
       const stamped = fresh.map((p) => ({ ...p, imageUrl: `${p.imageUrl}${p.imageUrl.includes("?") ? "&" : "?"}cb=${Date.now()}` }));
       setPhotos(stamped);
@@ -522,10 +528,8 @@ function Portfolio({ admin }: { admin: boolean }) {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadPhotos]);
+  }, []);
 
-  const uploadFn = useServerFn(adminUploadPortfolio);
-  const deleteFn = useServerFn(adminDeletePortfolio);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
@@ -555,7 +559,7 @@ function Portfolio({ admin }: { admin: boolean }) {
     for (const file of toProcess) {
       try {
         const dataUrl = await compressImage(file);
-        await uploadFn({ data: { password: session.password, dataUrl } });
+        await uploadPortfolioPhoto(dataUrl);
       } catch (e) {
         failed++;
         if (!lastError && e instanceof Error) lastError = e.message;
@@ -574,7 +578,7 @@ function Portfolio({ admin }: { admin: boolean }) {
     const session = readAdminSession();
     if (!session) { showMessage("एडमिन लॉगिन समाप्त हो गया"); return; }
     try {
-      await deleteFn({ data: { password: session.password, id: photo.id, storagePath: photo.storagePath } });
+      await deletePortfolioPhoto(photo.id, photo.storagePath);
       setPhotos((prev) => prev.filter((item) => item.id !== photo.id));
     } catch (e) {
       showMessage(e instanceof Error ? e.message : "फ़ोटो हटाई नहीं जा सकी");
@@ -672,12 +676,10 @@ function PhotoUpload({ admin }: { admin: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadArtistPhoto = useServerFn(getArtistPhoto);
-  const uploadArtist = useServerFn(adminUploadArtist);
 
   const refresh = async () => {
     try {
-      const fresh = await loadArtistPhoto();
+      const fresh = await fetchArtistPhoto();
       if (fresh) {
         setPhoto({ ...fresh, imageUrl: `${fresh.imageUrl}${fresh.imageUrl.includes("?") ? "&" : "?"}cb=${Date.now()}` });
       } else {
@@ -691,7 +693,8 @@ function PhotoUpload({ admin }: { admin: boolean }) {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadArtistPhoto]);
+  }, []);
+
 
   const onFile = async (file?: File) => {
     if (!file) return;
@@ -701,7 +704,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
       const session = readAdminSession();
       if (!session) throw new Error("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
       const dataUrl = await compressImage(file, 1200, 0.82);
-      await uploadArtist({ data: { password: session.password, dataUrl } });
+      await uploadArtistPhoto(dataUrl);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "फ़ोटो अपलोड नहीं हो सकी");
