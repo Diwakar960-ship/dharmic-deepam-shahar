@@ -559,7 +559,7 @@ function Portfolio({ admin }: { admin: boolean }) {
     for (const file of toProcess) {
       try {
         const dataUrl = await compressImage(file);
-        await uploadFn({ data: { password: session.password, dataUrl } });
+        await uploadPortfolioPhoto(dataUrl);
       } catch (e) {
         failed++;
         if (!lastError && e instanceof Error) lastError = e.message;
