@@ -704,7 +704,7 @@ function PhotoUpload({ admin }: { admin: boolean }) {
       const session = readAdminSession();
       if (!session) throw new Error("एडमिन लॉगिन समाप्त हो गया — कृपया दोबारा लॉगिन करें");
       const dataUrl = await compressImage(file, 1200, 0.82);
-      await uploadArtist({ data: { password: session.password, dataUrl } });
+      await uploadArtistPhoto(dataUrl);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "फ़ोटो अपलोड नहीं हो सकी");
