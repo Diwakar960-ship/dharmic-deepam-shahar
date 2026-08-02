@@ -7,7 +7,7 @@ import { FloatingPetals } from "@/components/FloatingPetals";
 import { PACKAGES, waLink } from "@/lib/whatsapp";
 import { compressImage, MAX_PHOTOS } from "@/lib/portfolio-db";
 import { getArtistPhoto, getPortfolioPhotos, type CloudArtistPhoto, type CloudPortfolioPhoto } from "@/lib/portfolio-cloud.functions";
-import { verifyAdmin, adminUploadPortfolio, adminDeletePortfolio, adminUploadArtist } from "@/lib/admin.functions";
+import { adminUploadPortfolio, adminDeletePortfolio, adminUploadArtist } from "@/lib/admin.functions";
 
 const ADMIN_STORAGE_KEY = "dp_admin_session_v3";
 const ADMIN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
