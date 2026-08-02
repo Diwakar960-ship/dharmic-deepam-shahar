@@ -676,12 +676,10 @@ function PhotoUpload({ admin }: { admin: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadArtistPhoto = useServerFn(getArtistPhoto);
-  const uploadArtist = useServerFn(adminUploadArtist);
 
   const refresh = async () => {
     try {
-      const fresh = await loadArtistPhoto();
+      const fresh = await fetchArtistPhoto();
       if (fresh) {
         setPhoto({ ...fresh, imageUrl: `${fresh.imageUrl}${fresh.imageUrl.includes("?") ? "&" : "?"}cb=${Date.now()}` });
       } else {
@@ -695,7 +693,8 @@ function PhotoUpload({ admin }: { admin: boolean }) {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadArtistPhoto]);
+  }, []);
+
 
   const onFile = async (file?: File) => {
     if (!file) return;
