@@ -251,30 +251,37 @@ function Header({ admin, onAdminLogin, onLogout }: { admin: boolean; onAdminLogi
   );
 }
 
+// Admin credentials checked client-side with an exact string match so login
+// behaves identically on Lovable preview and any other host (Netlify, etc.),
+// with no dependency on server env vars, cookies or sessionStorage.
+const ADMIN_EMAIL = "diwakarpandey6611@gmail.com";
+const ADMIN_PASSWORD = "Dheeraj@2024";
+
 function AdminLoginDialog({ open, onOpenChange, onSuccess }: { open: boolean; onOpenChange: (open: boolean) => void; onSuccess: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const verify = useServerFn(verifyAdmin);
 
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError("");
-    try {
-      await verify({ data: { email: email.trim(), password } });
-      writeAdminSession(password);
+    const emailOk = email.trim().toLowerCase() === ADMIN_EMAIL;
+    const passwordOk = password === ADMIN_PASSWORD;
+    if (!emailOk || !passwordOk) {
+      setError("गलत ईमेल या पासवर्ड");
       setLoading(false);
-      setEmail("");
-      setPassword("");
-      onOpenChange(false);
-      onSuccess();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "गलत ईमेल या पासवर्ड");
-      setLoading(false);
+      return;
     }
+    writeAdminSession(password);
+    setLoading(false);
+    setEmail("");
+    setPassword("");
+    onOpenChange(false);
+    onSuccess();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
